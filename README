@@ -3,7 +3,7 @@ A just-for-fun project for approximating an "operating system" for the original 
 Goals:
 	Time-sharing scheduler
 	Negotiation of access to shared resources
-		eg. vram, audio, input
+		eg. vram, audio, input, RAM
 	IPC
 	task spawning
 	sleep()
