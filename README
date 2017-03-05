@@ -1,0 +1,17 @@
+A just-for-fun project for approximating an "operating system" for the original Game Boy.
+
+Goals:
+	Time-sharing scheduler
+	Negotiation of access to shared resources
+		eg. vram, audio, input
+	IPC
+	task spawning
+	sleep()
+
+Stretch goals:
+	Text interface application
+	Split screen access to vram
+
+Non goals:
+	Full state switching (eg. all io regs, vram, ...) to allow 'bare metal' programs to run
+	Security - all programs must obey the rules but if they don't we can't stop them
