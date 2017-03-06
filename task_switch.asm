@@ -1,5 +1,7 @@
 include "hram.asm"
 include "task.asm"
+include "macros.asm"
+include "longcalc.asm"
 
 
 SECTION "Task List", WRAM0
@@ -59,7 +61,19 @@ TaskLoad::
 	ld B, [HL]
 	inc HL
 	ld C, [HL]
-	; TODO set banks
+	; Set ROM and RAM banks, if any
+	RepointStruct HL, task_sp+1, task_rombank
+	ld A, 0
+	add [HL]
+	jr z, .noROM
+	SetROMBank
+	ld A, 0
+.noROM
+	RepointStruct HL, task_rombank, task_rambank
+	add [HL]
+	jr z, .noRAM
+	SetRAMBank
+.noRAM
 	; set stack pointer
 	ld H, B
 	ld L, C

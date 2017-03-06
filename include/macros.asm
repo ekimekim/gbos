@@ -37,3 +37,13 @@ ShiftRN: MACRO
 	ENDR
 	PURGE N
 	ENDM
+
+; Set the ROM bank number to A
+SetROMBank: MACRO
+	ld [$2100], A ; I'm not entirely sure how to set the MBC type, and MBC2 doesn't like $2000
+	ENDM
+
+; Set the RAM bank number to A
+SetRAMBank: MACRO
+	ld [$4000], A
+	ENDM

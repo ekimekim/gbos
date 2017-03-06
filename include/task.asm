@@ -2,8 +2,8 @@
 ; --- Task struct ---
 RSRESET
 task_sp rw 1 ; stack pointer
-task_rombank rb ; loaded rom bank, or 0
-task_rambank rb ; loaded ram bank, or 0
+task_rombank rb 1 ; loaded rom bank, or 0
+task_rambank rb 1 ; loaded ram bank, or 0
 
 TASK_SIZE rb 0
 
