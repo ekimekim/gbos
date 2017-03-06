@@ -22,17 +22,17 @@ LongAdd: MACRO
 ; An alternate approach to LongAdd, suitable for very small const in-place addition to a 16-bit reg.
 ; \1 is target reg, \2 is const amount to add (positive or negative)
 LongAddConst: MACRO
-	IF \2 > 0
-	OP EQUS "inc"
-	N EQU \2
-	ELSE
-	OP EQUS "dec"
-	N EQU -\2
-	ENDC
-	REPT N
+IF \2 > 0
+OP EQUS "inc"
+N EQU \2
+ELSE
+OP EQUS "dec"
+N EQU -\2
+ENDC
+REPT N
 	OP \1
-	ENDR
-	PURGE OP,N
+ENDR
+PURGE OP,N
 	ENDM
 
 ; Given some address stored in \1 pointing to struct field \2, modify \1 to point at field \3 instead

@@ -14,23 +14,20 @@ SECTION "Task switching", ROM0
 
 
 ; Save task state from current cpu state and transitions into the (blank) core stack.
-; Interrupts must be disabled.
 ; Expects the top of stack to look like: (top), Return address, PC of task, user stack
 TaskSave::
 	; We must be careful here not to lose register values before saving them
-	; Our first step is to save HL so we can use it
-	ld [Scratch], HL
-	; Now it's safe to pop our return address and save it
-	pop HL
-	ld [Scratch+2], HL
-	; Now we can restore HL and safely push everything to the user's stack
-	ld HL, [Scratch]
 	push AF
 	push BC
 	push DE
 	push HL
-	; Now we can save and switch stacks
-	ld HL, SP
+	; Before leaving this stack, we need to pull out the return address,
+	; which is now 8 bytes into the stack
+	ld HL, SP+8
+	ld D, H
+	ld E, L ; DE = return address
+	; Now we can save SP and switch stacks
+	ld HL, SP+0
 	ld B, H
 	ld C, L ; BC = SP
 	LongAdd 0,[CurrentTask], ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + CurrentTask + task_sp = &(TaskList[CurrentTask].task_sp)
@@ -41,8 +38,9 @@ TaskSave::
 	; Load core stack
 	ld HL, CoreStackBase
 	ld SP, HL
-	; Restore original return address and return
-	ld HL, [Scratch+2]
+	; Return to saved address
+	ld H, D
+	ld L, E ; HL = return address
 	jp [HL]
 
 
