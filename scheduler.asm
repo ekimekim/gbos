@@ -26,6 +26,13 @@ SchedAddTask::
 	RingPushNoCheck RunList, RUN_LIST_SIZE, B
 	ret
 
+; task-callable version of SchedAddTask
+T_SchedAddTask::
+	call T_DisableSwitch
+	call SchedAddTask
+	call T_EnableSwitch
+
+
 ; Choose next task to run and run it.
 ; Does not return.
 SchedLoadNext::

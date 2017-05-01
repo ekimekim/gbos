@@ -1,6 +1,8 @@
 include "constants.asm"
 include "task.asm"
 include "longcalc.asm"
+include "hram.asm"
+include "ioregs.asm"
 
 
 Section "Core Stack", WRAM0
@@ -29,11 +31,26 @@ Start::
 	ld L, CoreStack & $ff
 	ld SP, HL
 
+	; Set up timer
+	ld A, TimerEnable | TimerFreq18
+	ld [TimerControl], A
+	ld A, 0
+	ld [Uptime], A
+	ld [Uptime+1], A
+	ld [Uptime+2], A
+	ld [Uptime+3], A
+
 	; Init things
 	call SchedInit
+	DisableSwitch
+
+	ld A, IntEnableTimer
+	ld [InterruptsEnabled], A
+	ei ; note we've still got switching disabled until we switch into our first task
 
 	TaskNewHelper 0, TempStack1, Task1
 	TaskNewHelper TASK_SIZE, TempStack2, Task2
+
 	jp SchedLoadNext ; does not return
 
 

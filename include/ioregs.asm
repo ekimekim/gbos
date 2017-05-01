@@ -32,6 +32,12 @@ TimerModulo EQU $ff06
 ; 2^12 Hz, 2^18 Hz, 2^16 Hz and 2^14 Hz respectively.
 TimerControl EQU $ff07
 
+TimerEnable EQU 1 << 2
+TimerFreq12 EQU 0
+TimerFreq18 EQU 1
+TimerFreq16 EQU 2
+TimerFreq14 EQU 3
+
 ; "IF" Interrupt flag register. The hardware will set a bit in this register when an interrupt
 ; would be generated, even if interrupts are currently disabled. Bits respectively (from 0 to 5) refer to
 ; VBlank, LCDC, Timer, Serial and Joystick interrupts.
@@ -108,3 +114,9 @@ WindowX EQU $ff4b
 ; "IE" Interrupt Enable flags. Write to this register to selectively disable interrupts.
 ; Bits 0-4 control off/on for respectively: VBlank, LCDC, Timer, Serial, Joypad
 InterruptsEnabled EQU $ffff
+
+IntEnableVBlank EQU 1 << 0
+IntEnableLCDC EQU 1 << 1
+IntEnableTimer EQU 1 << 2
+IntEnableSerial EQU 1 << 3
+IntEnableJoypad EQU 1 << 4

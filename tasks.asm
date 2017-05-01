@@ -96,6 +96,10 @@ TaskLoad::
 	ld H, B
 	ld L, C
 	ld SP, HL
+	; EnableSwitch clobbers A, so we have to do this now.
+	; It should be safe even if we switch out here, since we will cleanly return to here,
+	; then continue on to finish the first switch.
+	EnableSwitch
 	; restore regs
 	pop HL
 	pop DE
@@ -108,8 +112,30 @@ TaskLoad::
 
 
 ; Voluntarily give up task execution. Allows other tasks to run and returns some time later.
-; Does not clobber any registers.
+; Clobbers A.
 T_TaskYield::
+	DisableSwitch
 	call TaskSave ; switch onto core stack
 	; TODO scheduling stuff?
-	jp SchedLoadNext
+	jp SchedLoadNext ; does not return
+
+
+; Temporarily disable time-share switching (calling T_TaskYield is still ok),
+; allowing critical sections without disabling interrupts entirely.
+; Clobbers A.
+T_DisableSwitch::
+	DisableSwitch
+	ret
+
+; Re-enable time-share switching after a call to T_DisableSwitch.
+; If a switch attempt was missed, this will trigger an immediate switch.
+; Clobbers A.
+T_EnableSwitch::
+	ld A, [Switchable]
+	cp 2
+	jp nz, .noswitch
+	call TaskSave ; saves our caller and switches onto core stack
+	jp SchedLoadNext ; does not return
+.noswitch
+	EnableSwitch
+	ret

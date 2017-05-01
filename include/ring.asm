@@ -2,6 +2,7 @@ include "longcalc.asm"
 
 ; A ring is a fixed-size array that forms a queue.
 ; Ring capacities must be 1 less than powers of 2, up to 255.
+; Structure is semi-threadsafe: It is safe for exactly one reader and one writer.
 ; Internal note: Our buffer is 1 more than our capacity, and head == tail means empty.
 
 ; --- Ring struct ---
