@@ -81,5 +81,7 @@ TaskLoad::
 	pop DE
 	pop BC
 	pop AF
+	; the SaveTask process leaves some junk on the stack, skip it
+	add SP, 2
 	; at this point, the top of the user's stack should be the PC to return to
 	ret
