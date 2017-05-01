@@ -32,12 +32,12 @@ LongAddToA: MACRO
 ; An alternate approach to LongAdd, suitable for very small const in-place addition to a 16-bit reg.
 ; \1 is target reg, \2 is const amount to add (positive or negative)
 LongAddConst: MACRO
-IF \2 >= 0
+IF (\2) >= 0
 OP EQUS "inc"
 N EQU \2
 ELSE
 OP EQUS "dec"
-N EQU -\2
+N EQU -(\2)
 ENDC
 REPT N
 	OP \1
@@ -47,7 +47,7 @@ PURGE OP,N
 
 ; Given some address stored in \1 pointing to struct field \2, modify \1 to point at field \3 instead
 RepointStruct: MACRO
-	LongAddConst \1, (\3 - \2)
+	LongAddConst \1, (\3) - (\2)
 	ENDM
 
 ; Subtract 16-bit reg pairs or immediates \1\2 and \3\4, putting result in \5\6, which may be the same as either.

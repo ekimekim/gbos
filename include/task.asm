@@ -21,9 +21,9 @@ ENDC
 ; Start a new task of id \1 with stack \2 and entry point \3. Clobbers all. Must all be immediates.
 TaskNewHelper: MACRO
 	ld B, \1
-	ld D, \3 >> 8
-	ld E, \3 & $ff
-	ld H, \2 >> 8
-	ld L, \2 & $ff
+	ld D, (\3) >> 8
+	ld E, (\3) & $ff
+	ld H, (\2) >> 8
+	ld L, (\2) & $ff
 	call TaskNew
 	ENDM
