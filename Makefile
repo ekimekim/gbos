@@ -1,7 +1,7 @@
 
 # avoid implicit rules for clarity
 .SUFFIXES: .asm .o .gb
-.PHONY: run clean tiles bgb
+.PHONY: run clean
 
 ASMS := $(wildcard *.asm)
 OBJS := $(ASMS:.asm=.o)
@@ -18,6 +18,6 @@ bgb: rom.gb
 	bgb $<
 
 clean:
-	rm *.o *.sym game.gb
+	rm -f *.o *.sym rom.gb
 
 all: rom.gb
