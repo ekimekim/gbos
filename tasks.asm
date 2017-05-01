@@ -60,7 +60,7 @@ TaskSave::
 	inc HL
 	ld [HL], C
 	; Load core stack
-	ld HL, CoreStackBase
+	ld HL, CoreStack
 	ld SP, HL
 	; Return to saved address
 	ld H, D

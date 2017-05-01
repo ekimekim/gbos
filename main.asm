@@ -5,16 +5,18 @@ include "longcalc.asm"
 
 Section "Core Stack", WRAM0
 
-CoreStackBase::
+CoreStackBase:
 	ds CORE_STACK_SIZE
+CoreStack::
 
 
 Section "Temp Stacks", WRAM0
 
-TempStack1:
+TempStacksBase:
 	ds CORE_STACK_SIZE
-TempStack2:
+TempStack1::
 	ds CORE_STACK_SIZE
+TempStack2::
 
 
 Section "Core Functions", ROM0
