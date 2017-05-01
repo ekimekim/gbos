@@ -15,3 +15,20 @@ Stretch goals:
 Non goals:
 	Full state switching (eg. all io regs, vram, ...) to allow 'bare metal' programs to run
 	Security - all programs must obey the rules but if they don't we can't stop them
+
+
+Notes:
+
+'Core' code is the OS itself, is located in ROM0 and uses RAM0. It has a dedicated stack.
+'Tasks' (generally) run in an arbitrary ROM bank and may use a RAM bank allocated at runtime.
+This allows for limited dynamic memory management without needing to make code relocatable.
+There will probably also be 'core tasks' that are tasks that do async core work, and so not all
+tasks will have a dedicated ROM bank. Currently design allows for up to one ROM and RAM bank per task.
+These banks are only loaded when the task is.
+Tasks are in charge of managing their own stack.
+TODO allocate some stack space (and other space?) for tasks that don't otherwise need their own RAM bank.
+
+Functions with 'T_' prepended, eg. 'T_Foobar' are suitable for calling 'into' core.
+Generally, these don't actually trigger a task switch onto the core stack, but do some core-managed job
+on the task's stack before returning, ie. they're normal functions, just semantically seperated
+as being allowed to touch core stuff.

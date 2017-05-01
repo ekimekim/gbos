@@ -10,11 +10,35 @@ TaskList::
 	ds MAX_TASKS * TASK_SIZE
 
 
-SECTION "Task switching", ROM0
+SECTION "Task management", ROM0
+
+
+; Create a new task with entry point in DE, and initial stack pointer in HL.
+; For now, you must also provide the task id in B. This will be auto-allocated later.
+TaskNew::
+	; prepare the initial stack, which can be mostly garbage.
+	dec HL
+	ld [HL], D
+	dec HL
+	ld [HL], E ; push DE to stack at HL - this becomes the initial PC
+	LongSub H,L, 0,10, D,E ; push 10 bytes of garbage to the stack and save in DE - this becomes junk + initial regs
+	; fill in the task struct
+	LongAdd 0,B, ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
+	ld [HL], D
+	inc HL
+	ld [HL], E ; [HL] = DE, this sets the initial stack pointer
+	RepointStruct HL, task_sp+1, task_rombank
+	ld [HL], 0
+	RepointStruct HL, task_rombank, task_rambank
+	ld [HL], 0
+	call SchedAddTask ; schedule new task to run
+	ret
 
 
 ; Save task state from current cpu state and transitions into the (blank) core stack.
 ; Expects the top of stack to look like: (top), Return address, PC of task, user stack
+; (it is done this way so that 'call TaskSave' will save your caller and return to you,
+; suitable for interrupt handlers, etc)
 TaskSave::
 	; We must be careful here not to lose register values before saving them
 	push AF
@@ -49,12 +73,7 @@ TaskSave::
 ; Takes task ID to load in A.
 TaskLoad::
 	ld [CurrentTask], A
-	; HL = TaskList + A + task_sp = &(TaskList[A].task_sp)
-	add (TaskList+task_sp) & $ff
-	ld L, A
-	ld A, 0
-	adc (TaskList+task_sp) >> 8
-	ld H, A
+	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + A + task_sp = &(TaskList[A].task_sp)
 	; BC = [HL] = stored stack pointer
 	ld B, [HL]
 	inc HL
@@ -85,3 +104,11 @@ TaskLoad::
 	add SP, 2
 	; at this point, the top of the user's stack should be the PC to return to
 	ret
+
+
+; Voluntarily give up task execution. Allows other tasks to run and returns some time later.
+; Does not clobber any registers.
+T_TaskYield::
+	call TaskSave ; switch onto core stack
+	; TODO scheduling stuff?
+	jp SchedLoadNext

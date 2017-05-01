@@ -19,10 +19,20 @@ LongAdd: MACRO
 	ld \5, A
 	ENDM
 
+; Add 16-bit reg pair or immediate \1\2 to A, putting result in \3\4, which may be the same as \1\2.
+; Clobbers A. Sets or resets carry as per normal add.
+LongAddToA: MACRO
+	add \2
+	ld \4, A
+	ld A, 0
+	adc \1
+	ld \3, A
+	ENDM
+
 ; An alternate approach to LongAdd, suitable for very small const in-place addition to a 16-bit reg.
 ; \1 is target reg, \2 is const amount to add (positive or negative)
 LongAddConst: MACRO
-IF \2 > 0
+IF \2 >= 0
 OP EQUS "inc"
 N EQU \2
 ELSE
