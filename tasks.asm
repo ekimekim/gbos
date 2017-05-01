@@ -48,8 +48,9 @@ TaskSave::
 	; Before leaving this stack, we need to pull out the return address,
 	; which is now 8 bytes into the stack
 	ld HL, SP+8
-	ld D, H
-	ld E, L ; DE = return address
+	ld E, [HL]
+	inc HL
+	ld D, [HL] ; DE = return address. Note it's backwards because stack grows down.
 	; Now we can save SP and switch stacks
 	ld HL, SP+0
 	ld B, H

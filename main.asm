@@ -24,6 +24,14 @@ Section "Core Functions", ROM0
 
 ; Temporary code for testing task switching
 Start::
+	; Use core stack
+	ld H, CoreStack >> 8
+	ld L, CoreStack & $ff
+	ld SP, HL
+
+	; Init things
+	call SchedInit
+
 	TaskNewHelper 0, TempStack1, Task1
 	TaskNewHelper TASK_SIZE, TempStack2, Task2
 	jp SchedLoadNext ; does not return
