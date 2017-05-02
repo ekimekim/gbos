@@ -41,6 +41,7 @@ Start::
 	ld [Uptime+3], A
 
 	; Init things
+	call TaskInit
 	call SchedInit
 	DisableSwitch
 
@@ -48,8 +49,8 @@ Start::
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 
-	TaskNewHelper 0, TempStack1, Task1
-	TaskNewHelper TASK_SIZE, TempStack2, Task2
+	TaskNewHelper TempStack1, Task1
+	TaskNewHelper TempStack2, Task2
 
 	jp SchedLoadNext ; does not return
 

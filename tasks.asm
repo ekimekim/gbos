@@ -13,15 +13,67 @@ TaskList::
 SECTION "Task management", ROM0
 
 
+; Initialize task management structures
+TaskInit::
+	; Setting task_sp to $0000 marks it as unoccupied
+	ld A, 0
+	ld B, MAX_TASKS
+	ld HL, TaskList + task_sp
+	jp .start
+.loop
+	LongAddConst HL, TASK_SIZE + (-2) ; TASK_SIZE - 2 is a syntax error for some reason
+.start
+	ld [HL+], A
+	ld [HL+], A
+	dec B
+	jp nz, .loop
+	ret
+
+
+; Find the next free task id and return it in B, or 255 if none are free.
+; Clobbers A, HL.
+TaskFindNextFree::
+	ld HL, TaskList + task_sp
+	ld B, MAX_TASKS - 1
+	jp .start
+.loop
+	dec B
+	; if B underflowed, we checked all MAX_TASKS without breaking
+	; and should return B = 255, which it is because it just underflowed
+	ret c
+	LongAddConst HL, TASK_SIZE + (-1) ; TASK_SIZE - n is a syntax error, assembler bug
+.start
+	ld A, [HL+]
+	or [HL] ; set z only if both A and [HL] are 0
+	jp nz, .loop
+	; If we got here, HL = TaskList + first free task id + task_sp + 1
+	; so we want to find HL - (TaskList + task_sp + 1).
+	; Since we know the final result is < 256, we only need to do the lower half
+	; of the subtraction. We don't care about the carry.
+	ld A, L
+	sub (TaskList + task_sp + 1) & $ff
+	ld B, A
+	ret
+
+
 ; Create a new task with entry point in DE, and initial stack pointer in HL.
-; For now, you must also provide the task id in B. This will be auto-allocated later.
+; Returns the new task id in B, or 255 if no task could be allocated.
 TaskNew::
+	; Pick a task id
+	push HL
+	call TaskFindNextFree
+	pop HL
+	ld A, B
+	cp $ff
+	ret z ; if B == 255, exit early with failure
+
 	; prepare the initial stack, which can be mostly garbage.
 	dec HL
 	ld [HL], D
 	dec HL
 	ld [HL], E ; push DE to stack at HL - this becomes the initial PC
 	LongSub H,L, 0,10, D,E ; push 10 bytes of garbage to the stack and save in DE - this becomes junk + initial regs
+
 	; fill in the task struct
 	LongAdd 0,B, ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
 	ld [HL], D
@@ -33,6 +85,13 @@ TaskNew::
 	ld [HL], 0
 	call SchedAddTask ; schedule new task to run
 	ret
+
+
+; Task-callable version of TaskNew
+T_TaskNew::
+	call T_DisableSwitch
+	call TaskNew
+	call T_EnableSwitch
 
 
 ; Save task state from current cpu state and transitions into the (blank) core stack.
