@@ -16,13 +16,3 @@ MAX_TASKS EQU 31
 IF MAX_TASKS * TASK_SIZE >= 256
 FAIL "Since CurrentTask is only 1 byte, TaskList must fit within 256 bytes"
 ENDC
-
-
-; Start a new task with stack \1 and entry point \2. Clobbers all. Must all be immediates.
-TaskNewHelper: MACRO
-	ld D, (\2) >> 8
-	ld E, (\2) & $ff
-	ld H, (\1) >> 8
-	ld L, (\1) & $ff
-	call TaskNew
-	ENDM

@@ -2,6 +2,7 @@ include "hram.asm"
 include "task.asm"
 include "macros.asm"
 include "longcalc.asm"
+include "constants.asm"
 
 
 SECTION "Task List", WRAM0
@@ -32,7 +33,7 @@ TaskInit::
 
 ; Find the next free task id and return it in B, or 255 if none are free.
 ; Clobbers A, HL.
-TaskFindNextFree::
+TaskFindNextFree:
 	ld HL, TaskList + task_sp
 	ld B, MAX_TASKS - 1
 	jp .start
@@ -58,7 +59,7 @@ TaskFindNextFree::
 
 ; Create a new task with entry point in DE, and initial stack pointer in HL.
 ; Returns the new task id in B, or 255 if no task could be allocated.
-TaskNew::
+TaskNewWithStack::
 	; Pick a task id
 	push HL
 	call TaskFindNextFree
@@ -66,7 +67,11 @@ TaskNew::
 	ld A, B
 	cp $ff
 	ret z ; if B == 255, exit early with failure
-
+	; fall through to TaskNewWithID
+; Create a new task with entry point in DE, initial stack pointer in HL,
+; and new task id in B.
+TaskNewWithID:
+	ld A, B
 	; prepare the initial stack, which can be mostly garbage.
 	dec HL
 	ld [HL], D
@@ -87,10 +92,41 @@ TaskNew::
 	ret
 
 
-; Task-callable version of TaskNew
-T_TaskNew::
+; Create a new task with entry point in DE, and a stack allocated from dynamic memory.
+; Returns the new task id in B, or 255 if no task could be allocated.
+TaskNewDynStack::
+	call TaskFindNextFree ; B = new task id or 255
+	ld A, B
+	cp $ff
+	ret z ; if B = 255, exit early with failure
+	push DE
+	ld D, B
+	ld B, DYN_MEM_STACK_SIZE
+	ld HL, GeneralDynMem
+	call DynMemAlloc ; allocate stack in the name of task D, put in HL
+	ld B, D ; B = task id
+	pop DE ; DE = start addr
+	ld A, H
+	or L ; H or L -> set Z if HL == $0000
+	jp nz, .nofail
+	; return failure since we couldn't allocate a stack
+	ld B, $ff
+	ret
+.nofail
+	; HL points to the base of the new stack, but stacks grow down,
+	; we want to give the top of the stack
+	LongAdd H,L, 0,DYN_MEM_STACK_SIZE, H,L ; HL += stack size
+	jp TaskNewWithID ; tail call
+
+
+; Task-callable versions of TaskNew family
+T_TaskNewWithStack::
 	call T_DisableSwitch
-	call TaskNew
+	call TaskNewWithStack
+	call T_EnableSwitch
+T_TaskNewDynStack::
+	call T_DisableSwitch
+	call TaskNewDynStack
 	call T_EnableSwitch
 
 

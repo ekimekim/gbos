@@ -12,15 +12,6 @@ CoreStackBase:
 CoreStack::
 
 
-Section "Temp Stacks", WRAM0
-
-TempStacksBase:
-	ds CORE_STACK_SIZE
-TempStack1::
-	ds CORE_STACK_SIZE
-TempStack2::
-
-
 Section "Core Functions", ROM0
 
 
@@ -43,14 +34,22 @@ Start::
 	; Init things
 	call TaskInit
 	call SchedInit
+
+	ld HL, GeneralDynMem
+	ld B, GENERAL_DYN_MEM_SIZE
+	call DynMemInit
+
 	DisableSwitch
 
 	ld A, IntEnableTimer
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 
-	TaskNewHelper TempStack1, Task1
-	TaskNewHelper TempStack2, Task2
+	ld DE, Task1
+	call TaskNewDynStack
+
+	ld DE, Task2
+	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
 
