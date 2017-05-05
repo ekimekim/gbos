@@ -63,7 +63,6 @@ Task1::
 	ld HL, $face
 .loop
 	inc A
-	call z, T_TaskYield
 	jp .loop
 
 

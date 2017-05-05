@@ -191,9 +191,12 @@ TaskLoad::
 	ld H, B
 	ld L, C
 	ld SP, HL
+	; Set up time slice interval and enable switch.
 	; EnableSwitch clobbers A, so we have to do this now.
 	; It should be safe even if we switch out here, since we will cleanly return to here,
 	; then continue on to finish the first switch.
+	ld A, SWITCH_TIME_INTERVAL
+	ld [SwitchTimer], A
 	EnableSwitch
 	; restore regs
 	pop HL

@@ -56,30 +56,31 @@ TimerHandler::
 	; our purpose here is to make it as fast as possible for the far-most-common case
 	; where we only increment the least signifigant byte
 	push AF
-	ldh A, [Uptime+3]
+	; Increment 4-byte number
+ADDR SET Uptime + 3
+REPT 3
+	ld A, [ADDR]
 	inc A
-	ldh [Uptime+3], A
-	and $7 ; set z every 8th increment
-	jr nz, .ret
-	push HL
-	ld HL, Uptime+3
-	add [HL] ; set z if [Uptime+3] is 0
+	ld [ADDR], A
 	jr nz, .nocarry
-	dec HL ; Uptime+2
-	inc [HL]
-	jr nc, .nocarry
-	dec HL ; Uptime+1
-	inc [HL]
-	jr nc, .nocarry
-	dec HL ; Uptime
-	inc [HL]
+ADDR SET ADDR + (-1)
+ENDR
+	ld A, [ADDR]
+	inc A
+	ld [ADDR], A
+PURGE ADDR
 .nocarry
+	ldh A, [SwitchTimer]
+	dec A ; set z if we're ready to switch
+	ld [SwitchTimer], A
+	jr nz, .ret ; if we aren't switching, return
 	; task switch if applicable
 	ld A, [Switchable]
 	and A
-	pop HL
 	jr z, .switch
-	; no switch, leave a marker
+	; No switch, leave a marker. Since SwitchTimer is now 0, it will underflow and give us 256 loops
+	; before we'll try to switch again. This is fine because the marker will cause a switch as soon
+	; as the task enables switching.
 	ld A, 2
 	ld [Switchable], A
 .ret

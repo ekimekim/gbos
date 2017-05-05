@@ -5,6 +5,10 @@ RSSET $ff80
 ; 32-bit unsigned int, big-endian. Units are 1/2^10 seconds (~1ms). Wraps every 48 days.
 Uptime rb 4
 
+; Count of how many 2^-10sec increments left until the next task switch.
+; Reset on each switch.
+SwitchTimer rb 1
+
 ; Currently running (or most recent) task ID. A task ID is an offset into the tasks array.
 CurrentTask rb 1
 
