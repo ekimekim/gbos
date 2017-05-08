@@ -1,3 +1,4 @@
 *.sym
 *.gb
 include/assets/*.asm
+.uptodate

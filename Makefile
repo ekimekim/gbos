@@ -6,8 +6,15 @@
 ASMS := $(wildcard *.asm)
 OBJS := $(ASMS:.asm=.o)
 INCLUDES := $(wildcard include/*.asm)
+ASSETS := $(shell find assets/ -type f)
 
-%.o: %.asm $(INCLUDES)
+all: rom.gb
+
+include/assets/.uptodate: $(ASSETS)
+	python tools/assets_to_asm.py assets/ include/assets/
+	touch $@
+
+%.o: %.asm $(INCLUDES) include/assets/.uptodate
 	rgbasm -i include/ -v -o $@ $<
 
 rom.gb: $(OBJS)
@@ -18,6 +25,5 @@ bgb: rom.gb
 	bgb $<
 
 clean:
-	rm -f *.o *.sym rom.gb
+	rm -f *.o *.sym rom.gb "include/assets/.uptodate"
 
-all: rom.gb
