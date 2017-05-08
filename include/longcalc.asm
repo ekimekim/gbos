@@ -30,6 +30,7 @@ LongAddToA: MACRO
 	ENDM
 
 ; An alternate approach to LongAdd, suitable for very small const in-place addition to a 16-bit reg.
+; (compared to a LongAdd \1,\2,\1, faster for abs(\2) <= 4 and smaller for <= 8)
 ; \1 is target reg, \2 is const amount to add (positive or negative)
 LongAddConst: MACRO
 IF (\2) >= 0
