@@ -17,6 +17,14 @@ Section "Core Functions", ROM0
 
 ; Temporary code for testing task switching
 Start::
+	; Disable LCD and audio.
+	; Disabling LCD must be done in VBlank.
+	; On hardware start, we have about 10-20 cycles of vblank before the first frame begins.
+	; So this has to be first thing!
+	xor A
+	ld [SoundControl], A
+	ld [LCDControl], A
+
 	; Use core stack
 	ld H, CoreStack >> 8
 	ld L, CoreStack & $ff
@@ -34,6 +42,7 @@ Start::
 	; Init things
 	call TaskInit
 	call SchedInit
+	call GraphicsInit
 
 	ld HL, GeneralDynMem
 	ld B, GENERAL_DYN_MEM_SIZE
@@ -41,7 +50,14 @@ Start::
 
 	DisableSwitch
 
-	ld A, IntEnableTimer
+	ld A, %10000001 ; background map on, everything else off
+	ld [LCDControl], A
+
+	xor A
+	ld [TimerCounter], A ; Uptime timer starts from here
+	ld [InterruptFlags], A ; Reset pending interrupts now that we're properly set up
+
+	ld A, IntEnableTimer | IntEnableVBlank
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 

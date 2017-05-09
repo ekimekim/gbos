@@ -1,4 +1,5 @@
 include "macros.asm"
+include "longcalc.asm"
 include "vram.asm"
 
 
@@ -9,7 +10,7 @@ QUEUE_MODE_THRESHOLD EQU 106
 
 ; Timing info for keeping the vblank handler from running too long
 VBLANK_INITIAL_CREDITS EQU 255 ; TODO find correct value
-VBLANK_ARRAY_COST EQU 106 ; array total time ~= time to write 106.36 items
+VBLANK_ARRAY_COST EQU 106 ; array total time ~= time to write 106.27 items
 
 
 SECTION "Core assets", ROM0
@@ -19,7 +20,7 @@ include "assets/font.asm"
 FONT_TILE_DATA_SIZE EQU @ - FontTileData
 
 
-SECTION "Graphics system RAM", RAM0
+SECTION "Graphics system RAM", WRAM0
 
 ; For now, we make no attempt to mediate access. But if more than one task is writing
 ; they're gonna be uncoordinated and have a bad time.
@@ -33,7 +34,7 @@ TileQueueInfo:
 	ds 2 * 4
 
 
-SECTION "Graphics system aligned RAM", RAMX[$d000]
+SECTION "Graphics system aligned RAM", WRAMX[$d000]
 
 ; An array of 4 tile queues, each 256 bytes long.
 ; Each queue is 128 entries of 2 bytes (addr, value), where addr is the lower byte of
@@ -53,33 +54,48 @@ GraphicsInit::
 	; Load core tile data
 	ld HL, FontTileData
 	ld DE, OverlapTileMap + $20 ; first char in font is ' ' = $20
-	ld B, FONT_TILE_DATA_SIZE
-	Copy ; Copy B bytes from HL to DE
+	ld BC, FONT_TILE_DATA_SIZE
+	LongCopy ; Copy BC bytes from HL to DE
 
 	; Init queues by zeroing heads and lengths
 	xor A
-	ld HL, TileQueueLengths
-REPT 4
-	ld [HL+], A
-ENDR
-	ld HL, TileQueueHeads
-REPT 4
+	ld HL, TileQueueInfo
+REPT 8
 	ld [HL+], A
 ENDR
 
+	; TODO remove this testing code that intentionally writes garbage
+	ld HL, TileQueueInfo
+	ld [HL], 16
+	inc HL
+	inc HL
+	ld [HL], 0
+	inc HL
+	inc HL
+	ld [HL], QUEUE_MODE_THRESHOLD
+	inc HL
+	inc HL
+	ld [HL], QUEUE_MODE_THRESHOLD
+	inc HL
+	inc HL
 	ret
 
 
 ; VBlank handler that actually does the writes.
 ; It does as much as it can before vblank time runs out, then returns.
 GraphicsVBlank::
+	push AF
+	push BC
+	push DE
+	push HL
+
 	ld HL, TileQueueInfo
 
 	; We use a primitive scheme of timekeeping here, where we have a number of 'credits'.
 	; Doing a queue item write costs 1 credit. Doing a full array-mode flush costs many.
 	; We check if we can afford actions before doing them and track how many we have left.
 	; This prevents us running too long and not being in vblank anymore.
-	ld B, VBLANK_INITAL_CREDITS
+	ld B, VBLANK_INITIAL_CREDITS
 
 	; A possible improvement - read io regs to determine where in vblank we are,
 	; preventing a delayed interrupt from causing havoc.
@@ -96,13 +112,14 @@ _GraphicsVBlankLoop: MACRO
 	jp z, .arraymode\@
 
 	; queue mode
-	; Cycle cost (worst case): 26 + 11/item
-	ld C, A ; C = length for safekeeping
-	ld A, [HL+] ; A = queue head, HL now points at next queue's length
-	push HL
+	; Cycle cost (worst case): 34 + 11/item
+	ld C, A
+	ld D, A ; C = D = length for safekeeping
+	ld A, [HL-] ; A = queue head, HL points at queue length
 	sub C
 	sub C
-	ld L, A ; L = queue head - 2 * queue length = queue tail
+	ld E, A ; E = queue head - 2 * queue length = queue tail
+	        ; we want this in L eventually but need HL for now
 	ld A, B
 	sub C ; A = time credits - items, set c if too many items
 	jp nc, .can_afford\@
@@ -110,6 +127,12 @@ _GraphicsVBlankLoop: MACRO
 	xor A ; A = 0 in prep for next line, faster than having two paths
 .can_afford\@
 	ld B, A ; set remaining credits to A (either subtract result or 0)
+	ld A, D ; A = original length
+	sub C ; A -= actual length we're consuming. A = remaining length.
+	ld [HL+], A ; update queue's length, point HL at queue head
+	inc HL ; point HL at next queue's length
+	push HL
+	ld L, E ; L = queue tail
 	ld H, (TileQueues >> 8) + \1 ; HL = addr of queue tail slot
 	ld D, (TileGrid >> 8) + \1 ; by setting E, we can now manipulate DE = addr into TileGrid
 	; We're finally ready. C is the loop counter.
@@ -121,18 +144,19 @@ _GraphicsVBlankLoop: MACRO
 	ld [DE], A ; set value in array
 	inc L
 	dec C
-	jp nz, .queue_loop ; consider unrolling? lose granularity in time credits
+	jp nz, .queue_loop\@ ; consider unrolling? lose granularity in time credits
 	pop HL ; HL = next queue length
-	jp .next
+	jp .next\@
 
 .arraymode\@
-	; Total cycle cost: 1196
+	; Total cycle cost: 1203
 	ld A, B ; A = remaining credits
 	sub VBLANK_ARRAY_COST ; set carry if cost > remaining credits
-	jp c, .next ; if we can't afford, skip
+	jp c, .next\@ ; if we can't afford, skip
 	; note that the new remaining credits is still in A, and will remain so while we clobber B.
+	ld [HL], 0 ; set new queue length to 0, since we're doing a full clear
 	push HL
-	ld HL, SP
+	ld HL, SP+0
 	ld B, H
 	ld C, L ; BC = SP for safekeeping
 	ld HL, TileGrid + \1 * 256
@@ -149,7 +173,9 @@ ENDR
 	ld H, B
 	ld L, C
 	ld SP, HL ; restore SP from BC
-	pop HL ; restore HL = QueueInfo pointer
+	pop HL ; restore HL = this queue length
+	inc HL
+	inc HL ; HL = next queue length
 	ld B, A ; finally update remaining credits
 
 .next\@
@@ -159,39 +185,44 @@ ENDM
 	_GraphicsVBlankLoop 1
 	_GraphicsVBlankLoop 2
 	_GraphicsVBlankLoop 3
+
+	pop HL
+	pop DE
+	pop BC
+	pop AF
 	reti
 
 
 
-; Set tile at tilemap index DE to value C
-; TODO needs fixing after TileQueueLengths/Heads became Info.
-GraphicsWriteTile::
-	; We assume we're the only writer, but we need to be constantly aware that vblank could
-	; occur and change the queues at any time.
-
-	LongAdd 0,D, TileQueueLengths >> 8,TileQueueLengths & $ff, H,L ; HL = TileQueueLengths + D
-	ld A, $ff
-
-	; Since vblank can convert an array-mode queue back into queue mode, we need to check
-	; for and possibly apply an update to an array-mode queue with interrupts disabled.
-	di
-	cp [HL] ; set z if length = $ff, ie. queue is in array-mode.
-	jp .queuemode
-	ld A, D
-	add TileQueues >> 8
-	ld D, A ; DE = TileQueue in question + index into array
-	ld A, C
-	ld [DE], A ; Write new value into array
-	reti ; With that, we're done! Enable interrupts and return.
-.queuemode
-	ei
-
-	; Since vblank can only take mode from array to queue, and we know it's currently in queue mode,
-	; we can assume it stays in queue mode until we change it.
-
-	push HL ; push addr of queue length to stack, useful later
-	; Repoint HL from its index into TileQueueLengths to the same index of TileQueueHeads
-	RepointStruct HL, TileQueueLengths, TileQueueHeads
-	; Note there is always room to add another item before considering if we've hit threshold.
-	
-	; TODO UPTO
+;; Set tile at tilemap index DE to value C
+;; TODO needs fixing after TileQueueLengths/Heads became Info.
+;GraphicsWriteTile::
+;	; We assume we're the only writer, but we need to be constantly aware that vblank could
+;	; occur and change the queues at any time.
+;
+;	LongAdd 0,D, TileQueueLengths >> 8,TileQueueLengths & $ff, H,L ; HL = TileQueueLengths + D
+;	ld A, $ff
+;
+;	; Since vblank can convert an array-mode queue back into queue mode, we need to check
+;	; for and possibly apply an update to an array-mode queue with interrupts disabled.
+;	di
+;	cp [HL] ; set z if length = $ff, ie. queue is in array-mode.
+;	jp .queuemode
+;	ld A, D
+;	add TileQueues >> 8
+;	ld D, A ; DE = TileQueue in question + index into array
+;	ld A, C
+;	ld [DE], A ; Write new value into array
+;	reti ; With that, we're done! Enable interrupts and return.
+;.queuemode
+;	ei
+;
+;	; Since vblank can only take mode from array to queue, and we know it's currently in queue mode,
+;	; we can assume it stays in queue mode until we change it.
+;
+;	push HL ; push addr of queue length to stack, useful later
+;	; Repoint HL from its index into TileQueueLengths to the same index of TileQueueHeads
+;	RepointStruct HL, TileQueueLengths, TileQueueHeads
+;	; Note there is always room to add another item before considering if we've hit threshold.
+;	
+;	; TODO UPTO
