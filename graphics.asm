@@ -9,7 +9,7 @@ include "vram.asm"
 QUEUE_MODE_THRESHOLD EQU 106
 
 ; Timing info for keeping the vblank handler from running too long
-VBLANK_INITIAL_CREDITS EQU 255 ; TODO find correct value
+VBLANK_INITIAL_CREDITS EQU 72
 VBLANK_ARRAY_COST EQU 106 ; array total time ~= time to write 106.27 items
 
 
@@ -66,10 +66,10 @@ ENDR
 
 	; TODO remove this testing code that intentionally writes garbage
 	ld HL, TileQueueInfo
-	ld [HL], 16
+	ld [HL], QUEUE_MODE_THRESHOLD
 	inc HL
 	inc HL
-	ld [HL], 0
+	ld [HL], QUEUE_MODE_THRESHOLD
 	inc HL
 	inc HL
 	ld [HL], QUEUE_MODE_THRESHOLD
@@ -104,10 +104,10 @@ GraphicsVBlank::
 _GraphicsVBlankLoop: MACRO
 	ld A, B
 	and A ; set z if we have no time credits left
-	ret z ; return if we're out of time
+	jp z, .ret ; return if we're out of time
 	ld A, [HL+] ; A = queue length, HL now points at queue head
 	and A ; set z if A == 0
-	jp z, .next\@
+	jp z, .inc_hl_and_next\@
 	cp $ff
 	jp z, .arraymode\@
 
@@ -130,7 +130,6 @@ _GraphicsVBlankLoop: MACRO
 	ld A, D ; A = original length
 	sub C ; A -= actual length we're consuming. A = remaining length.
 	ld [HL+], A ; update queue's length, point HL at queue head
-	inc HL ; point HL at next queue's length
 	push HL
 	ld L, E ; L = queue tail
 	ld H, (TileQueues >> 8) + \1 ; HL = addr of queue tail slot
@@ -146,13 +145,13 @@ _GraphicsVBlankLoop: MACRO
 	dec C
 	jp nz, .queue_loop\@ ; consider unrolling? lose granularity in time credits
 	pop HL ; HL = next queue length
-	jp .next\@
+	jp .inc_hl_and_next\@
 
 .arraymode\@
 	; Total cycle cost: 1203
 	ld A, B ; A = remaining credits
 	sub VBLANK_ARRAY_COST ; set carry if cost > remaining credits
-	jp c, .next\@ ; if we can't afford, skip
+	jp c, .inc_hl_twice_and_next\@ ; if we can't afford, skip
 	; note that the new remaining credits is still in A, and will remain so while we clobber B.
 	ld [HL], 0 ; set new queue length to 0, since we're doing a full clear
 	push HL
@@ -174,11 +173,11 @@ ENDR
 	ld L, C
 	ld SP, HL ; restore SP from BC
 	pop HL ; restore HL = this queue length
-	inc HL
-	inc HL ; HL = next queue length
 	ld B, A ; finally update remaining credits
-
-.next\@
+.inc_hl_twice_and_next\@
+	inc HL
+.inc_hl_and_next\@
+	inc HL
 ENDM
 
 	_GraphicsVBlankLoop 0
@@ -186,6 +185,7 @@ ENDM
 	_GraphicsVBlankLoop 2
 	_GraphicsVBlankLoop 3
 
+.ret
 	pop HL
 	pop DE
 	pop BC
