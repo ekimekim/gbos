@@ -3,14 +3,8 @@ include "longcalc.asm"
 include "vram.asm"
 
 
-; If the queue size exceeds this value, convert it from queue mode into array mode.
-; Max 128.
-; Going by cycle stats reported below, break-even is between 106 and 107 items.
-QUEUE_MODE_THRESHOLD EQU 106
-
 ; Timing info for keeping the vblank handler from running too long
-VBLANK_INITIAL_CREDITS EQU 72
-VBLANK_ARRAY_COST EQU 106 ; array total time ~= time to write 106.27 items
+VBLANK_INITIAL_CREDITS EQU 61
 
 
 SECTION "Core assets", ROM0
@@ -27,8 +21,7 @@ SECTION "Graphics system RAM", WRAM0
 
 TileQueueInfo:
 ; Array of 4 x (length, head) info for the respective tile queues in TileQueues.
-; - length: length of tile queue, in items, 0 to QUEUE_MODE_THRESHOLD.
-;   255 means no queue, it's a straight copy, see below.
+; - length: length of tile queue, in items, 0 to 128.
 ; - head: head of tile queue as index into queue.
 ;   Valid items in queues are from head - 2 * length to head - 1.
 	ds 2 * 4
@@ -40,8 +33,6 @@ SECTION "Graphics system aligned RAM", WRAMX[$d000]
 ; Each queue is 128 entries of 2 bytes (addr, value), where addr is the lower byte of
 ; the tilemap address to write into.
 ; Aligned so we can select the queue with the high byte and address into it with the low.
-; When the length is 255 (see above), it's no longer a queue but instead a direct array of
-; values to write into the tilemap.
 TileQueues:
 	ds 256 * 4
 
@@ -66,16 +57,16 @@ ENDR
 
 	; TODO remove this testing code that intentionally writes garbage
 	ld HL, TileQueueInfo
-	ld [HL], QUEUE_MODE_THRESHOLD
+	ld [HL], 128
 	inc HL
 	inc HL
-	ld [HL], QUEUE_MODE_THRESHOLD
+	ld [HL], 128
 	inc HL
 	inc HL
-	ld [HL], QUEUE_MODE_THRESHOLD
+	ld [HL], 128
 	inc HL
 	inc HL
-	ld [HL], QUEUE_MODE_THRESHOLD
+	ld [HL], 128
 	inc HL
 	inc HL
 	ret
@@ -92,7 +83,7 @@ GraphicsVBlank::
 	ld HL, TileQueueInfo
 
 	; We use a primitive scheme of timekeeping here, where we have a number of 'credits'.
-	; Doing a queue item write costs 1 credit. Doing a full array-mode flush costs many.
+	; Doing a queue item write costs 1 credit.
 	; We check if we can afford actions before doing them and track how many we have left.
 	; This prevents us running too long and not being in vblank anymore.
 	ld B, VBLANK_INITIAL_CREDITS
@@ -100,7 +91,8 @@ GraphicsVBlank::
 	; A possible improvement - read io regs to determine where in vblank we are,
 	; preventing a delayed interrupt from causing havoc.
 
-; helper macro for unrolling loop. takes loop iteration 0-3 as \1.
+; Helper macro for unrolling loop. Takes loop iteration 0-3 as \1.
+; Cycle cost (worst case): 46 + 11/item
 _GraphicsVBlankLoop: MACRO
 	ld A, B
 	and A ; set z if we have no time credits left
@@ -108,11 +100,7 @@ _GraphicsVBlankLoop: MACRO
 	ld A, [HL+] ; A = queue length, HL now points at queue head
 	and A ; set z if A == 0
 	jp z, .inc_hl_and_next\@
-	cp $ff
-	jp z, .arraymode\@
-
 	; queue mode
-	; Cycle cost (worst case): 34 + 11/item
 	ld C, A
 	ld D, A ; C = D = length for safekeeping
 	ld A, [HL-] ; A = queue head, HL points at queue length
@@ -145,37 +133,7 @@ _GraphicsVBlankLoop: MACRO
 	dec C
 	jp nz, .queue_loop\@ ; consider unrolling? lose granularity in time credits
 	pop HL ; HL = next queue length
-	jp .inc_hl_and_next\@
 
-.arraymode\@
-	; Total cycle cost: 1203
-	ld A, B ; A = remaining credits
-	sub VBLANK_ARRAY_COST ; set carry if cost > remaining credits
-	jp c, .inc_hl_twice_and_next\@ ; if we can't afford, skip
-	; note that the new remaining credits is still in A, and will remain so while we clobber B.
-	ld [HL], 0 ; set new queue length to 0, since we're doing a full clear
-	push HL
-	ld HL, SP+0
-	ld B, H
-	ld C, L ; BC = SP for safekeeping
-	ld HL, TileGrid + \1 * 256
-	ld SP, TileQueues + \1 * 256
-.array_loop\@
-REPT 16 ; unrolled for speed
-	pop DE ; increments SP and does 16-bit copy into DE - fast!
-	ld [HL], D
-	inc L
-	ld [HL], E
-	inc L ; sets Z if we roll over, meaning loop is done
-ENDR
-	jr nz, .array_loop\@
-	ld H, B
-	ld L, C
-	ld SP, HL ; restore SP from BC
-	pop HL ; restore HL = this queue length
-	ld B, A ; finally update remaining credits
-.inc_hl_twice_and_next\@
-	inc HL
 .inc_hl_and_next\@
 	inc HL
 ENDM
