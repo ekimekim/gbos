@@ -4,7 +4,7 @@ include "vram.asm"
 
 
 ; Timing info for keeping the vblank handler from running too long
-VBLANK_INITIAL_CREDITS EQU 61
+VBLANK_INITIAL_CREDITS EQU 60
 
 
 SECTION "Core assets", ROM0
@@ -57,13 +57,13 @@ ENDR
 
 	; TODO remove this testing code that intentionally writes garbage
 	ld HL, TileQueueInfo
-	ld [HL], 128
+	ld [HL], 1
 	inc HL
 	inc HL
-	ld [HL], 128
+	ld [HL], 1
 	inc HL
 	inc HL
-	ld [HL], 128
+	ld [HL], 1
 	inc HL
 	inc HL
 	ld [HL], 128
