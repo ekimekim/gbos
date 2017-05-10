@@ -92,11 +92,8 @@ GraphicsVBlank::
 	; preventing a delayed interrupt from causing havoc.
 
 ; Helper macro for unrolling loop. Takes loop iteration 0-3 as \1.
-; Cycle cost (worst case): 46 + 11/item
+; Cycle cost (worst case): 45 + 11/item
 _GraphicsVBlankLoop: MACRO
-	ld A, B
-	and A ; set z if we have no time credits left
-	jp z, .ret ; return if we're out of time
 	ld A, [HL+] ; A = queue length, HL now points at queue head
 	and A ; set z if A == 0
 	jp z, .inc_hl_and_next\@
@@ -108,7 +105,9 @@ _GraphicsVBlankLoop: MACRO
 	sub C
 	ld E, A ; E = queue head - 2 * queue length = queue tail
 	        ; we want this in L eventually but need HL for now
-	ld A, B
+	ld A, B ; A = time credits remaining
+	and A ; set z if we have no time credits left
+	jp z, .ret ; return if we're out of time
 	sub C ; A = time credits - items, set c if too many items
 	jp nc, .can_afford\@
 	ld C, B ; C = all remaining time credits
