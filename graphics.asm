@@ -55,20 +55,6 @@ REPT 8
 	ld [HL+], A
 ENDR
 
-	; TODO remove this testing code that intentionally writes garbage
-	ld HL, TileQueueInfo
-	ld [HL], 1
-	inc HL
-	inc HL
-	ld [HL], 1
-	inc HL
-	inc HL
-	ld [HL], 1
-	inc HL
-	inc HL
-	ld [HL], 128
-	inc HL
-	inc HL
 	ret
 
 
@@ -151,35 +137,41 @@ ENDM
 
 
 
-;; Set tile at tilemap index DE to value C
-;; TODO needs fixing after TileQueueLengths/Heads became Info.
-;GraphicsWriteTile::
-;	; We assume we're the only writer, but we need to be constantly aware that vblank could
-;	; occur and change the queues at any time.
-;
-;	LongAdd 0,D, TileQueueLengths >> 8,TileQueueLengths & $ff, H,L ; HL = TileQueueLengths + D
-;	ld A, $ff
-;
-;	; Since vblank can convert an array-mode queue back into queue mode, we need to check
-;	; for and possibly apply an update to an array-mode queue with interrupts disabled.
-;	di
-;	cp [HL] ; set z if length = $ff, ie. queue is in array-mode.
-;	jp .queuemode
-;	ld A, D
-;	add TileQueues >> 8
-;	ld D, A ; DE = TileQueue in question + index into array
-;	ld A, C
-;	ld [DE], A ; Write new value into array
-;	reti ; With that, we're done! Enable interrupts and return.
-;.queuemode
-;	ei
-;
-;	; Since vblank can only take mode from array to queue, and we know it's currently in queue mode,
-;	; we can assume it stays in queue mode until we change it.
-;
-;	push HL ; push addr of queue length to stack, useful later
-;	; Repoint HL from its index into TileQueueLengths to the same index of TileQueueHeads
-;	RepointStruct HL, TileQueueLengths, TileQueueHeads
-;	; Note there is always room to add another item before considering if we've hit threshold.
-;	
-;	; TODO UPTO
+; Set tile at tilemap index DE to value C
+; Sets A to 0 on success, otherwise on failure.
+; Clobbers HL.
+GraphicsTryWriteTile::
+	; We assume we're the only writer, but we need to be constantly aware that vblank could
+	; run at any time.
+
+	ld A, D
+	add D
+	LongAddToA TileQueueInfo >> 8,TileQueueInfo & $ff, H,L ; HL = TileQueueInfo + 2 * D
+	; HL = length of D'th queue
+
+	ld A, [HL+] ; A = length of queue, HL = addr of head
+	cp 128 ; set carry if length < 128, ie. if there's room for another item
+	ret nc ; if no carry, fail. A = length != 0 so we're indicating failure.
+
+	push HL ; we'll need TileQueueInfo again later
+	ld L, [HL] ; L = current queue head position
+	ld A, TileQueueInfo >> 8
+	add D
+	ld H, A ; H = TileQueueInfo high byte + D
+	; now HL = addr of queue head position
+	ld [HL], E
+	inc L
+	ld [HL], C
+	inc L ; add (index, value) to queue and set L to new queue head position
+	ld A, L
+	pop HL ; HL = addr of queue head in TileQueueInfo
+
+	; This section needs to be done atomically, otherwise if vblank runs in between
+	; it would do the wrong items.
+	di
+	ld [HL-], A ; set head to new value, set HL to length addr
+	inc [HL] ; increment length
+	ei
+
+	xor A ; A = 0 to indicate success
+	ret
