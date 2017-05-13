@@ -3,13 +3,13 @@
 LongCopy: MACRO
 	inc B ; adjust for an off-by-one issue in the loop exit condition
 .loop\@
-    ld A, [HL+]
-    ld [DE], A
-    inc DE
-    dec C
-    jr nz, .loop\@
+	ld A, [HL+]
+	ld [DE], A
+	inc DE
+	dec C
+	jr nz, .loop\@
 	dec B
-    jr nz, .loop\@
+	jr nz, .loop\@
 	ENDM
 
 ; Copy B bytes (non-zero) from [HL] to [DE]. Clobbers A.
