@@ -61,10 +61,13 @@ Start::
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 
-	ld DE, Task1
-	call TaskNewDynStack
+;	ld DE, Task1
+;	call TaskNewDynStack
 
 	ld DE, Task2
+	call TaskNewDynStack
+
+	ld DE, Task3
 	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
@@ -111,3 +114,21 @@ Fib:
 	inc B ; return B to initial value
 	call T_TaskYield ; demonstrate yielding. Fib(B) should equal DE.
 	ret
+
+
+Task3::
+	; write to screen in a loop, writing i'th tile to value (i+offset)%256 with changing offset
+	ld C, 0
+.outer
+	inc C ; makes value 1 more out of phase with index
+	ld DE, 0
+.inner
+	call T_GraphicsWriteTile
+	inc C
+	inc E
+	jr nz, .inner
+	inc D
+	ld A, D
+	cp 4 ; set z if DE = $0400
+	jr nz, .inner
+	jr .outer

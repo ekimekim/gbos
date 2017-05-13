@@ -155,9 +155,9 @@ GraphicsTryWriteTile::
 
 	push HL ; we'll need TileQueueInfo again later
 	ld L, [HL] ; L = current queue head position
-	ld A, TileQueueInfo >> 8
+	ld A, TileQueues >> 8
 	add D
-	ld H, A ; H = TileQueueInfo high byte + D
+	ld H, A ; H = TileQueues high byte + D
 	; now HL = addr of queue head position
 	ld [HL], E
 	inc L
@@ -174,4 +174,23 @@ GraphicsTryWriteTile::
 	ei
 
 	xor A ; A = 0 to indicate success
+	ret
+
+
+; As GraphicsTryWriteTile, but callable from tasks
+T_GraphicsTryWriteTile::
+	call T_DisableSwitch
+	call GraphicsTryWriteTile
+	jp T_EnableSwitch
+
+
+; As T_GraphicsTryWriteTile, but blocks until the write succeeds.
+; Clobbers A, HL.
+; Note: Since this may block, there is no non-T_ version
+T_GraphicsWriteTile::
+	; TODO for now, busy loop. Use something smarter involving scheduler later.
+.loop
+	call T_GraphicsTryWriteTile
+	and A ; set z on success
+	jp nz, .loop
 	ret
