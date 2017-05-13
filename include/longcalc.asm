@@ -10,6 +10,7 @@ LongLoad: MACRO
 ; Add 16-bit reg pairs or immediates \1\2 and \3\4, putting result in \5\6, which may be the same as either.
 ; Cannot use AF. Clobbers A. Sets or resets carry as per normal add.
 ; \1\2 and \5\6 may be indirect immediates.
+; Note: In the case where \1\2 and \5\6 are HL and \3\4 are BC or DE, you should use "ADD HL, rr" instead.
 LongAdd: MACRO
 	ld A, \2
 	add \4
@@ -24,7 +25,7 @@ LongAdd: MACRO
 LongAddToA: MACRO
 	add \2
 	ld \4, A
-	ld A, 0
+	xor A
 	adc \1
 	ld \3, A
 	ENDM
@@ -64,6 +65,7 @@ LongSub: MACRO
 
 ; Shift 16-bit reg pair \1\2 (not AF) left once. Sets carry as per normal shift.
 ; This corresponds to doubling the (unsigned) value.
+; Note: If you simply want to double HL, "ADD HL, HL" is faster but has different flag effects.
 LongShiftL: MACRO
 	sla \2
 	rl \1

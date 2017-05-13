@@ -1,19 +1,18 @@
 
-; Copy BC bytes from [HL] to [DE]. Clobbers A.
+; Copy BC bytes (non-zero) from [HL] to [DE]. Clobbers A.
 LongCopy: MACRO
+	inc B ; adjust for an off-by-one issue in the loop exit condition
 .loop\@
     ld A, [HL+]
     ld [DE], A
     inc DE
-    dec BC
-    xor A
-    cp C
+    dec C
     jr nz, .loop\@
-    cp B
+	dec B
     jr nz, .loop\@
 	ENDM
 
-; Copy B bytes from [HL] to [DE]. Clobbers A.
+; Copy B bytes (non-zero) from [HL] to [DE]. Clobbers A.
 Copy: MACRO
 .loop\@
 	ld A, [HL+]
@@ -27,8 +26,8 @@ Copy: MACRO
 ShiftRN: MACRO
 	IF (\2) >= 4
 	swap \1
-	and $f0
-	N SET (\2) - 4
+	and $0f
+	N SET (\2) + (-4)
 	ELSE
 	N SET \2
 	ENDC
@@ -36,6 +35,21 @@ ShiftRN: MACRO
 	srl \1
 	ENDR
 	PURGE N
+	ENDM
+
+; More efficient (for N > 1) version of ShiftRN for reg A only.
+; Shifts A right \1 times.
+ShiftRN_A: MACRO
+	IF (\1) >= 4
+	swap A
+	N SET (\1) + (-4)
+	ELSE
+	N SET (\1)
+	ENDC
+	REPT N
+	rra ; note this is a rotate, hence the AND below
+	ENDR
+	and $ff >> (\1)
 	ENDM
 
 ; Set the ROM bank number to A

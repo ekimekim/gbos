@@ -26,14 +26,12 @@ Start::
 	ld [LCDControl], A
 
 	; Use core stack
-	ld H, CoreStack >> 8
-	ld L, CoreStack & $ff
-	ld SP, HL
+	ld SP, CoreStack
 
 	; Set up timer
 	ld A, TimerEnable | TimerFreq18
 	ld [TimerControl], A
-	ld A, 0
+	xor A
 	ld [Uptime], A
 	ld [Uptime+1], A
 	ld [Uptime+2], A

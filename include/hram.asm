@@ -36,6 +36,6 @@ DisableSwitch: MACRO
 ; This is the raw underlying action - most users should use T_EnableSwitch instead.
 ; Clobbers A.
 EnableSwitch: MACRO
-	ld A, 0
+	xor A
 	ld [Switchable], A
 	ENDM

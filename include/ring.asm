@@ -25,7 +25,7 @@ ENDC
 ; Initialize a ring at immediate address \1
 ; Clobbers A.
 RingInit: MACRO
-	ld A, 0
+	xor A
 	ld [\1 + ring_head], A
 	ld [\1 + ring_tail], A
 	ENDM
@@ -47,7 +47,7 @@ RingPushNoCheck: MACRO
 	LongAdd 0,[(\1) + ring_head], (((\1)+ring_data) >> 8),(((\1)+ring_data) & $ff), H,L ; HL = \1 + ring_data + (value of ring_head) = addr of ring_head'th element of ring_data
 	ld [HL], \3
 	ld A, [(\1) + ring_head]
-	add 1
+	inc A
 	and \2 ; A = (A+1) % (capacity+1)
 	ld [(\1) + ring_head], A
 	ENDM
@@ -59,7 +59,7 @@ RingPopNoCheck: MACRO
 	LongAdd 0,[(\1) + ring_tail], (((\1)+ring_data) >> 8),(((\1)+ring_data) & $ff), H,L ; HL = \1 + ring_data + (value of ring_tail) = addr of ring_tail'th element of ring_data
 	ld \3, [HL]
 	ld A, [(\1) + ring_tail]
-	add 1
+	inc A
 	and \2 ; A = (A+1) % (capacity+1)
 	ld [(\1) + ring_tail], A
 	ENDM

@@ -111,4 +111,4 @@ T_DynMemAlloc::
 	ld A, [CurrentTask]
 	ld D, A
 	call DynMemAlloc
-	call T_EnableSwitch
+	jp T_EnableSwitch

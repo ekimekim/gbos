@@ -17,7 +17,7 @@ SECTION "Task management", ROM0
 ; Initialize task management structures
 TaskInit::
 	; Setting task_sp to $0000 marks it as unoccupied
-	ld A, 0
+	xor A
 	ld B, MAX_TASKS
 	ld HL, TaskList + task_sp
 	jp .start
@@ -71,25 +71,26 @@ TaskNewWithStack::
 ; Create a new task with entry point in DE, initial stack pointer in HL,
 ; and new task id in B.
 TaskNewWithID:
-	ld A, B
 	; prepare the initial stack, which can be mostly garbage.
 	dec HL
-	ld [HL], D
-	dec HL
+	ld A, D
+	ld [HL-], A
 	ld [HL], E ; push DE to stack at HL - this becomes the initial PC
 	LongSub H,L, 0,10, D,E ; push 10 bytes of garbage to the stack and save in DE - this becomes junk + initial regs
 
 	; fill in the task struct
-	LongAdd 0,B, ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
-	ld [HL], D
-	inc HL
-	ld [HL], E ; [HL] = DE, this sets the initial stack pointer
-	RepointStruct HL, task_sp+1, task_rombank
-	ld [HL], 0
-	RepointStruct HL, task_rombank, task_rambank
-	ld [HL], 0
-	call SchedAddTask ; schedule new task to run
-	ret
+	ld A, B
+	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
+	ld A, D
+	ld [HL+], A
+	ld A, E
+	ld [HL+], E ; [HL] = DE, this sets the initial stack pointer
+	RepointStruct HL, task_sp+2, task_rombank
+	xor A
+	ld [HL+], A
+	RepointStruct HL, task_rombank+1, task_rambank
+	ld [HL], A
+	jp SchedAddTask ; schedule new task to run and return
 
 
 ; Create a new task with entry point in DE, and a stack allocated from dynamic memory.
@@ -99,13 +100,11 @@ TaskNewDynStack::
 	ld A, B
 	cp $ff
 	ret z ; if B = 255, exit early with failure
-	push DE
-	ld D, B
+	push BC
 	ld B, DYN_MEM_STACK_SIZE
 	ld HL, GeneralDynMem
 	call DynMemAlloc ; allocate stack in the name of task D, put in HL
-	ld B, D ; B = task id
-	pop DE ; DE = start addr
+	pop BC
 	ld A, H
 	or L ; H or L -> set Z if HL == $0000
 	jp nz, .nofail
@@ -115,7 +114,8 @@ TaskNewDynStack::
 .nofail
 	; HL points to the base of the new stack, but stacks grow down,
 	; we want to give the top of the stack
-	LongAdd H,L, 0,DYN_MEM_STACK_SIZE, H,L ; HL += stack size
+	ld A, DYN_MEM_STACK_SIZE
+	LongAddToA H,L, H,L ; HL += stack size
 	jp TaskNewWithID ; tail call
 
 
@@ -123,11 +123,12 @@ TaskNewDynStack::
 T_TaskNewWithStack::
 	call T_DisableSwitch
 	call TaskNewWithStack
-	call T_EnableSwitch
+	jp T_EnableSwitch
+
 T_TaskNewDynStack::
 	call T_DisableSwitch
 	call TaskNewDynStack
-	call T_EnableSwitch
+	jp T_EnableSwitch
 
 
 ; Save task state from current cpu state and transitions into the (blank) core stack.
@@ -143,21 +144,21 @@ TaskSave::
 	; Before leaving this stack, we need to pull out the return address,
 	; which is now 8 bytes into the stack
 	ld HL, SP+8
-	ld E, [HL]
-	inc HL
+	ld A, [HL+]
+	ld E, A
 	ld D, [HL] ; DE = return address. Note it's backwards because stack grows down.
 	; Now we can save SP and switch stacks
 	ld HL, SP+0
 	ld B, H
 	ld C, L ; BC = SP
-	LongAdd 0,[CurrentTask], ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + CurrentTask + task_sp = &(TaskList[CurrentTask].task_sp)
+	ld A, [CurrentTask]
+	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + CurrentTask + task_sp = &(TaskList[CurrentTask].task_sp)
 	; Save SP to task struct
-	ld [HL], B
-	inc HL
+	ld A, B
+	ld [HL+], A
 	ld [HL], C
 	; Load core stack
-	ld HL, CoreStack
-	ld SP, HL
+	ld SP, CoreStack
 	; Return to saved address
 	ld H, D
 	ld L, E ; HL = return address
@@ -171,18 +172,19 @@ TaskLoad::
 	ld [CurrentTask], A
 	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + A + task_sp = &(TaskList[A].task_sp)
 	; BC = [HL] = stored stack pointer
-	ld B, [HL]
-	inc HL
-	ld C, [HL]
+	ld A, [HL+]
+	ld B, A
+	ld A, [HL+]
+	ld C, A
 	; Set ROM and RAM banks, if any
-	RepointStruct HL, task_sp+1, task_rombank
-	ld A, 0
-	add [HL]
+	RepointStruct HL, task_sp+2, task_rombank
+	ld A, [HL+]
+	and A
 	jr z, .noROM
 	SetROMBank
-	ld A, 0
+	xor A
 .noROM
-	RepointStruct HL, task_rombank, task_rambank
+	RepointStruct HL, task_rombank+1, task_rambank
 	add [HL]
 	jr z, .noRAM
 	SetRAMBank

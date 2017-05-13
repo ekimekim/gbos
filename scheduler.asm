@@ -30,7 +30,7 @@ SchedAddTask::
 T_SchedAddTask::
 	call T_DisableSwitch
 	call SchedAddTask
-	call T_EnableSwitch
+	jp T_EnableSwitch
 
 
 ; Choose next task to run and run it.
