@@ -84,7 +84,7 @@ TaskNewWithID:
 	ld A, D
 	ld [HL+], A
 	ld A, E
-	ld [HL+], E ; [HL] = DE, this sets the initial stack pointer
+	ld [HL+], A ; [HL] = DE, this sets the initial stack pointer
 	RepointStruct HL, task_sp+2, task_rombank
 	xor A
 	ld [HL+], A
