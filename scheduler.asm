@@ -8,7 +8,6 @@ SECTION "Scheduler RAM", WRAM0
 
 ; RunList is a ring.
 ; We assume it can never fill since tasks shouldn't be able to be in there twice.
-; We assume it can never empty since we should never have no runnable tasks for now.
 RUN_LIST_SIZE EQU MAX_TASKS
 RunList::
 	RingDeclare RUN_LIST_SIZE
@@ -36,8 +35,16 @@ T_SchedAddTask::
 ; Choose next task to run and run it.
 ; Does not return.
 SchedLoadNext::
-	RingPopNoCheck RunList, RUN_LIST_SIZE, B
 
+	; halt loop until any task is ready
+.loop
+	; TODO checking for now-enquable items goes here
+	RingPop RunList, RUN_LIST_SIZE, B
+	jp nz, .found
+	halt
+	jp .loop
+
+.found
 	; immediately re-enqueue it
 	RingPushNoCheck RunList, RUN_LIST_SIZE, B
 

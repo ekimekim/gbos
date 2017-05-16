@@ -52,14 +52,36 @@ RingPushNoCheck: MACRO
 	ld [(\1) + ring_head], A
 	ENDM
 
+; Helper for pop macros. Args are (ring address, ring capacity, target reg)
+; Pops into target reg assuming HL already points at tail index.
+_RingPopHL: MACRO
+	ld \3, [HL]
+	ld HL, (\1) + ring_tail
+	ld A, [HL]
+	inc A
+	and \2 ; A = (A+1) % (capacity+1)
+	ld [HL], A
+	ENDM
+
 ; Pop value into reg \3 (not A, H or L) from ring at immediate \1 of capacity \2.
 ; Clobbers A, H, L.
 ; Does NOT check if ring is empty! Behaviour in that case is undefined.
 RingPopNoCheck: MACRO
 	LongAdd 0,[(\1) + ring_tail], (((\1)+ring_data) >> 8),(((\1)+ring_data) & $ff), H,L ; HL = \1 + ring_data + (value of ring_tail) = addr of ring_tail'th element of ring_data
-	ld \3, [HL]
-	ld A, [(\1) + ring_tail]
-	inc A
-	and \2 ; A = (A+1) % (capacity+1)
-	ld [(\1) + ring_tail], A
+	_RingPopHL \1, \2, \3
+	ENDM
+
+; Pop value into reg \3 (not A, H or L) from ring at immediate \1 of capacity \2 if possible.
+; Otherwise (if ring is empty), sets zero flag and does not change \3.
+; Clobbers A, H, L
+RingPop: MACRO
+	ld HL, (\1) + ring_head
+	ld A, [HL+] ; A = tail
+	RepointStruct HL, ring_head + 1, ring_tail
+	cp [HL] ; Set z if tail == head (no items)
+	jp z, .end\@ ; if no items, finish with z flag set
+	RepointStruct HL, ring_tail, ring_data
+	LongAddToA H,L, H,L ; HL += tail index
+	_RingPopHL \1, \2, \3
+.end\@
 	ENDM
