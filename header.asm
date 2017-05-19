@@ -57,13 +57,13 @@ TimerHandler::
 	; where we only increment the least signifigant byte
 	push AF
 	; Increment 4-byte number
-ADDR SET Uptime + 3
+ADDR SET Uptime
 REPT 3
 	ld A, [ADDR]
 	inc A
 	ld [ADDR], A
 	jr nz, .nocarry
-ADDR SET ADDR + (-1)
+ADDR SET ADDR + 1
 ENDR
 	ld A, [ADDR]
 	inc A

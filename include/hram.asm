@@ -2,7 +2,7 @@ RSSET $ff80
 
 ; Machine uptime. Used for various timekeeping purposes.
 ; Accurate as long as interrupts are not disabled for longer than 1/2^10 seconds (~1ms).
-; 32-bit unsigned int, big-endian. Units are 1/2^10 seconds (~1ms). Wraps every 48 days.
+; 32-bit unsigned int, little-endian. Units are 1/2^10 seconds (~1ms). Wraps every 48 days.
 Uptime rb 4
 
 ; Count of how many 2^-10sec increments left until the next task switch.
