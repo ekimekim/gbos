@@ -64,4 +64,8 @@ no_match = Test(
 	out_zflag = False,
 )
 
+this_fails = Test(
+	out_HL = 0xcefa
+)
+
 # Currently no way to specify input/output stack, but it wouldn't be much of a change.
