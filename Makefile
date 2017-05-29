@@ -1,7 +1,7 @@
 
 # avoid implicit rules for clarity
 .SUFFIXES: .asm .o .gb
-.PHONY: run clean
+.PHONY: bgb clean
 
 ASMS := $(wildcard *.asm)
 OBJS := $(ASMS:.asm=.o)
@@ -18,7 +18,7 @@ include/assets/.uptodate: $(ASSETS)
 	rgbasm -i include/ -v -o $@ $<
 
 rom.gb: $(OBJS)
-	rgblink -n game.sym -o $@ $^
+	rgblink -n rom.sym -o $@ $^
 	rgbfix -v -p 0 $@
 
 bgb: rom.gb
