@@ -95,7 +95,7 @@ SchedEnqueueSleepTask::
 	ei ; we're done reading from Uptime
 	adc 0
 	ld L, A
-	xor A
+	ld A, 0 ; can't xor A as it would reset carry
 	adc H
 	ld H, A
 	; HLDE now contains target time
@@ -114,7 +114,7 @@ SchedEnqueueSleepTask::
 
 	; check if NextWake is empty ($ff) - if so, we can just put target time in and finish
 	ld A, [NextWake]
-	and $ff
+	cp $ff
 	jp nz, .not_empty
 	ld B, H
 	ld C, L
@@ -177,7 +177,7 @@ SchedEnqueueSleepTask::
 	xor A
 	sub C
 	ld E, A
-	xor A
+	ld A, 0 ; can't xor A as this would reset carry
 	sbc B
 	ld D, A
 	pop BC ; B = target task
@@ -274,10 +274,18 @@ T_SchedSleepTask::
 	; fallthrough
 ; For use by core code to put current task to sleep for DE time units.
 SchedSleepTask::
+	; We need to retrieve DE after TaskSave, save it to the top of CoreStack
+	ld A, D
+	ld [CoreStack - 1], A
+	ld A, E
+	ld [CoreStack - 2], A
 	call TaskSave
+	; pop the saved DE back off the stack
+	add SP, -2
+	pop DE
 	ld A, [CurrentTask]
 	ld B, A
-	call SchedSleepTask
+	call SchedEnqueueSleepTask
 	jp SchedLoadNext ; does not return
 
 
@@ -291,8 +299,8 @@ CheckNextWake:
 
 	; Compare Uptime to NextWakeTime. We need to disable timer interrupt for the duration
 	; so we can get a consistent read.
-	ld C, Uptime & $ff
-	ld HL, NextWakeTime
+	ld C, Uptime & $ff + 3
+	ld HL, NextWakeTime + 3
 	di
 	REPT 3
 	ld A, [C] ; A = Uptime byte
@@ -301,8 +309,8 @@ CheckNextWake:
 	reti ; No wake, Uptime is before wake time. Ensure we re-enable interrupts.
 .next\@
 	jr nz, .wake ; not equal, then Uptime > NextWakeTime, time to wake! Otherwise continue comparing.
-	inc C
-	inc HL ; inc both pointers and continue
+	dec C
+	dec HL ; dec both pointers and continue
 	ENDR
 	; This is the same as above, but without preparing for next loop
 	ld A, [C]
@@ -336,7 +344,7 @@ CheckNextWake:
 	ld [HL+], A ; add next byte, don't bother inc'ing DE since we're done with it
 	; last two bytes
 	REPT 2
-	xor A
+	ld A, 0 ; can't xor A as this would reset carry
 	adc [HL]
 	ld [HL+], A
 	ENDR
