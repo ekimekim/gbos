@@ -76,12 +76,14 @@ RingPopNoCheck: MACRO
 ; Clobbers A, H, L
 RingPop: MACRO
 	ld HL, (\1) + ring_head
-	ld A, [HL+] ; A = tail
+	ld A, [HL+] ; A = head
 	RepointStruct HL, ring_head + 1, ring_tail
 	cp [HL] ; Set z if tail == head (no items)
 	jp z, .end\@ ; if no items, finish with z flag set
-	RepointStruct HL, ring_tail, ring_data
+	ld A, [HL+] ; A = tail
+	RepointStruct HL, ring_tail + 1, ring_data
 	LongAddToA H,L, H,L ; HL += tail index
 	_RingPopHL \1, \2, \3
+	or $ff ; unset z, which may be set
 .end\@
 	ENDM

@@ -93,7 +93,8 @@ DynMemAlloc::
 	ret
 .nomatch
 	; C = chunk length - 1, HL points at chunk_owner = chunk start + 1, so HL + C = next chunk
-	LongAdd H,L, 0,C, H,L ; HL += C
+	ld A, C
+	LongAddToA H,L, H,L ; HL += C
 .start
 	ld A, [HL+] ; A = chunk length, HL points at chunk_owner
 	dec A ; A = chunk length - 1, set Z if A = 1 (end of range), wraps to 255 if A = 0 (ie. 256)

@@ -100,11 +100,13 @@ TaskNewDynStack::
 	ld A, B
 	cp $ff
 	ret z ; if B = 255, exit early with failure
-	push BC
+	push DE
+	ld D, B
 	ld B, DYN_MEM_STACK_SIZE
 	ld HL, GeneralDynMem
 	call DynMemAlloc ; allocate stack in the name of task D, put in HL
-	pop BC
+	ld B, D
+	pop DE
 	ld A, H
 	or L ; H or L -> set Z if HL == $0000
 	jp nz, .nofail
