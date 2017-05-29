@@ -54,9 +54,9 @@ class Test(object):
 			elif name in ['A', 'B', 'C', 'D', 'E', 'H', 'L']:
 				state['regs'][name] = value
 			elif name in ('BC', 'DE', 'HL'):
-				for reg in name[::-1]:
-					state['regs'][reg] = value & 0xff
-					value = value >> 8
+				high, low = name
+				state['regs'][high] = '({}) >> 8'.format(value)
+				state['regs'][low] = '({}) & $ff'.format(value)
 
 	def gen_asm(self, include_asm, target, extra_asm, mems):
 		if self.target is not None:
@@ -83,7 +83,7 @@ SECTION "{argv[0]} header", ROM0 [$100]
 ; This must be nop, then a jump, then blank up to 150
 _Start::
 	nop
-	jp Start
+	jp _TestStart
 _Header::
 	ds 76 ; Linker will fill this in
 
@@ -97,7 +97,7 @@ _TestSuccess::
 	ld HL, $face
 	jp _TestSuccess
 
-Start::
+_TestStart::
 xor A
 ld [$ffff], A ; Disable all interrupts
 ld SP, _TestStack
@@ -204,7 +204,7 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 	link_files = config.get('files', [])
 	target = config.get('target')
 	extra_asm = config.get('asm', '')
-	mems = {label: value.contents for label, value in config.items() if isinstance(value, Memory)}
+	mems = {label: value.contents for label, value in config.items() if isinstance(value, Memory) and not label.startswith('_')}
 	tests = {testname: test for testname, test in config.items() if isinstance(test, Test)}
 	if target is None and any(test.target is None for test in tests.values()):
 		raise ValueError("You must specify a target function, either at top-level or for every test case")
@@ -212,7 +212,7 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 	if include_file is None:
 		include_asm = ''
 	else:
-		include_path = os.path.join(top_level_dir, include_file)
+		include_path = os.path.join(top_level_dir, '{}.asm'.format(include_file))
 		with open(include_path) as f:
 			include_asm = f.read()
 
@@ -237,7 +237,7 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 		cmd(['rgbfix', '-v', '-p', 0, rom_path])
 
 
-def main(top_level_dir, include_dir='include', tests_dir='tests'):
+def main(top_level_dir, include_dir='include/', tests_dir='tests'):
 	include_dir = os.path.join(top_level_dir, include_dir)
 	tests_dir = os.path.join(top_level_dir, tests_dir)
 	for filename in os.listdir(tests_dir):
