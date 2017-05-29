@@ -74,26 +74,143 @@ SchedLoadNext::
 	jp TaskLoad ; does not return
 
 
+; Put task in B to sleep for DE time units
+SchedSleepTask::
+	; First, we calculate our target wake time by adding current time
+	; We need to disable timer interrupt for the duration so we can get a consistent read.
+	; HLDE = Uptime + DE
+	; We want to use HL to point to uptime for speed, so we temporarily use H,
+	; and move all the memory reads earlier.
+	ld HL, Uptime
+	di
+	ld A, [HL+]
+	add E
+	ld E, A
+	ld A, [HL+]
+	adc D
+	ld D, A
+	ld A, [HL+]
+	ld H, [HL]
+	ei ; we're done reading from Uptime
+	adc 0
+	ld L, A
+	xor A
+	adc H
+	ld H, A
+	; HLDE now contains target time
+
+	; We only support 16-bit deltas. We know that as long as NextWakeTime is after now,
+	; the difference from our target time < 16 bits because target time can only be up to 16 bits after now.
+	; Easiest way to check that is just to wake it if it's ready.
+	; This had to be done after the above, otherwise a race can occur where NextWake becomes ready between the two operations.
+	push BC
+	push DE
+	push HL
+	call CheckNextWake
+	pop HL
+	pop DE
+	; Note: not popping BC here since we're about to clobber it below and will need B later.
+
+	; check if NextWake is empty ($ff) - if so, we can just put target time in and finish
+	ld A, [NextWake]
+	and $ff
+	jp nz, .not_empty
+	ld B, H
+	ld C, L
+	ld HL, NextWakeTime ; to make below load faster, BC = HL so we can use HL for NextWakeTime addr
+	; so now BCDE contains target time. Now we set NextWakeTime = BCDE.
+	ld A, E
+	ld [HL+], A
+	ld A, D
+	ld [HL+], A
+	ld A, C
+	ld [HL+], A
+	ld A, B
+	ld [HL+], A
+	pop BC ; B = target task
+	ld A, B
+	ld [NextWake], A ; NextWake = target task
+	ret
+
+.not_empty
+	; BC = NextWakeTime - HLDE and set carry depending on if we borrow
+	; (we do it in this order since it doesn't really matter and the load instructions work out easier)
+	LongSub [NextWakeTime+1],[NextWakeTime], D,E, B,C ; BC = bottom word of NextWakeTime - DE, and set carry
+	; for the rest of the calculation, we don't care about result (it'll be either 0 or -1)
+	; we just need to know the final carry state
+	ld A, [NextWakeTime+2]
+	sbc L
+	ld A, [NextWakeTime+3]
+	sbc H
+	; if our target time was before NextWakeTime:
+	;   carry is unset, BC = time from target time to NextWakeTime
+	; if our target time was after NextWakeTime:
+	;   carry is set, BC = -(time from NextWakeTime to target time)
+	jp c, .target_after_next
+
+	; target time is before NextWake, swap them and push old NextWake to sleeping tasks instead
+	; NextWakeTime = HLDE = target time
+	ld A, E
+	ld [NextWakeTime], A
+	ld A, D
+	ld [NextWakeTime+1], A
+	ld A, L
+	ld [NextWakeTime+2], A
+	ld A, H
+	ld [NextWakeTime+3], A
+	; DE = BC = time from target time to old nextwake time
+	ld D, B
+	ld E, C
+	pop BC ; B = target task
+	ld HL, NextWake
+	ld A, [HL]
+	ld [HL, B]
+	ld B, A ; Swap target task and old NextWake task
+	; TODO DE = delta, B = task, indicate somehow that we know it's the smallest time and goes on head, then call some spot below to do the copy
+
+.target_after_next
+	; target time is after NextWake, push it to sleeping tasks
+	; DE = -BC = time from NextWakeTime to target time
+	xor A
+	sub C
+	ld E, A
+	xor A
+	sbc B
+	ld D, A
+	pop BC ; B = target task
+
+	; We iterate through sleeping task times until we find our position in it
+	ld HL, SleepTimeDeltas
+	ld C, 0 ; C is index, HL is addr into SleepTimeDeltas
+
+.maybe_insert_delta
+	; if DE < [delta at HL], swap them and 
+
+
 ; Check to see if NextWakeTime has been reached, and if so wake the task.
+; Clobbers all.
 CheckNextWake:
 	ld A, [NextWake]
 	cp $ff
 	ret z ; NextWake = $ff means no tasks to wake
 	ld B, A ; Since we loaded it, we might as well not load it again later. B for safekeeping.
 
+	; Compare Uptime to NextWakeTime. We need to disable timer interrupt for the duration
+	; so we can get a consistent read.
 	ld C, Uptime & $ff
 	ld HL, NextWakeTime
-	; Compare Uptime to NextWakeTime
+	di
 	REPT 3
 	ld A, [C] ; A = Uptime byte
 	cp [HL] ; Set c if A < [HL], ie. if Uptime < NextWakeTime. Set z if equal.
-	ret c ; No wake, Uptime is before wake time
+	reti c ; No wake, Uptime is before wake time. Ensure we re-enable interrupts.
 	jr nz, .wake ; not equal, then Uptime > NextWakeTime, time to wake! Otherwise continue comparing.
 	inc C
 	inc HL ; inc both pointers and continue
 	ENDR
 	; This is the same as above, but without preparing for next loop
 	ld A, [C]
+	ei
 	cp [HL]
 	ret c
 
@@ -142,7 +259,7 @@ CheckNextWake:
 	; Copy everything in SleepTimeDeltas forward
 	; Note that currently DE = SleepTimeDeltas + 1
 	ld A, B
-	add B
+	add B ; BUG: overflow?
 	LongAddToA D,E, H,L ; HL = DE + 2*B = index into SleepTimeDeltas of second byte of last previously-valid entry
 	; We loop B times, iterating backwards along the array, saving current value for next iteration before overwriting it
 	; At the start of each iteration, prev values are in DE
