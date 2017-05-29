@@ -25,7 +25,7 @@ LongAdd: MACRO
 LongAddToA: MACRO
 	add \2
 	ld \4, A
-	xor A
+	ld A, 0 ; this can't be xor A because that would reset carry
 	adc \1
 	ld \3, A
 	ENDM
