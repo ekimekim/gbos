@@ -119,6 +119,10 @@ Task3::
 	ld C, 0
 .outer
 	inc C ; makes value 1 more out of phase with index
+
+	ld DE, 50
+	call T_SchedSleepTask ; sleep for 50ms
+
 	ld DE, 0
 .inner
 	call T_GraphicsWriteTile

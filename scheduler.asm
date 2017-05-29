@@ -20,15 +20,16 @@ NextWakeTime:
 ; NextWake contains the task id to be woken at NextWakeTime, or $ff if none.
 NextWake:
 	db
-; SleepingTasks is an array of sleeping task ids, in wake order.
-; It is terminated by a $ff
+
+; SleepingTasks is an array of sleeping structs, in wake order.
+; It is terminated by a single byte $ff
+RSRESET
+sleep_task rb 1 ; task id of sleeping task
+sleep_delta rw 1 ; 16-bit little-endian time delta from previous sleep struct (or from NextWakeTime for first entry)
+SLEEP_SIZE rb 0
+
 SleepingTasks:
-	ds MAX_TASKS ; NextWake contains one task, but we also need one byte for terminator
-; SleepTimeDeltas is an array of 16-bit values which indicate the number of time ticks AFTER
-; the previous entry that the respective task from SleepingTasks should be woken.
-; Not terminated - SleepTimeDeltas array entry is valid only of SleepingTasks entry is.
-SleepTimeDeltas:
-	ds (MAX_TASKS + (-1)) * 2
+	ds (MAX_TASKS + (-1)) * SLEEP_SIZE + 1 ; NextWake contains one task, but we also need one byte for terminator
 
 
 SECTION "Scheduler", ROM0
@@ -37,7 +38,8 @@ SECTION "Scheduler", ROM0
 SchedInit::
 	RingInit RunList, RUN_LIST_SIZE
 	ld A, $ff
-	ld [SleepingTasks], A ; set length to 0 by setting first item to terminator
+	ld [NextWake], A ; set no next wake by setting to $ff
+	ld [SleepingTasks + sleep_task], A ; set length to 0 by setting first item to terminator
 	ret
 
 ; Enqueue a task with task id in B to be scheduled
@@ -164,9 +166,11 @@ SchedSleepTask::
 	pop BC ; B = target task
 	ld HL, NextWake
 	ld A, [HL]
-	ld [HL, B]
+	ld [HL], B
 	ld B, A ; Swap target task and old NextWake task
-	; TODO DE = delta, B = task, indicate somehow that we know it's the smallest time and goes on head, then call some spot below to do the copy
+	ld HL, SleepingTasks
+	; DE = delta, B = task, HL = first item to start copying down
+	jr .copy_loop
 
 .target_after_next
 	; target time is after NextWake, push it to sleeping tasks
@@ -180,11 +184,96 @@ SchedSleepTask::
 	pop BC ; B = target task
 
 	; We iterate through sleeping task times until we find our position in it
-	ld HL, SleepTimeDeltas
-	ld C, 0 ; C is index, HL is addr into SleepTimeDeltas
+	ld HL, SleepingTasks + sleep_task
 
-.maybe_insert_delta
-	; if DE < [delta at HL], swap them and 
+.check_deltas_loop
+	; if DE < [HL].delta, swap (B, DE) with ([HL].task, [HL].delta - DE) and copy back the rest
+	; else repoint HL to next item and repeat until we hit terminator
+	ld A, [HL+]
+	cp $ff
+	jr z, .append ; we hit terminator, add to the end and no need to copy
+	RepointStruct HL, sleep_task, sleep_delta
+	; AC = HL - DE, set carry if DE > HL
+	ld A, [HL+]
+	sub E
+	ld C, A
+	ld A, [HL+]
+	sbc D
+	jr nc, .insert ; delta is smaller than this item, insert it here
+	; delta is larger than this item, take the subtracted result as the new delta and continue
+	ld D, A
+	ld E, C
+	RepointStruct HL, sleep_delta+2, SLEEP_SIZE + sleep_task
+	jr .check_deltas_loop
+
+.append
+	; If we reached here: (B, DE) contains item to write. HL contains &(item.task)+1
+	dec HL
+	ld A, B
+	ld [HL+], A
+	RepointStruct HL, sleep_task+1, sleep_delta
+	ld A, E
+	ld [HL+], A
+	ld A, D
+	ld [HL+], A
+	ld [HL], $ff ; re-add the terminator
+	ret
+
+.insert
+	; If we reached here: (B, DE) contains item to write, AC contains new delta for shunted item,
+	; and HL points to &(item_slot_to_insert_at).delta + 2
+	dec HL
+	; walk HL backwards, writing new delta value as we pass
+	ld [HL], D
+	ld D, A
+	dec HL
+	ld A, E
+	ld [HL-], A
+	ld E, C ; DE now equals the new delta
+	RepointStruct HL, sleep_delta + (-1), sleep_task
+	ld A, B
+	ld B, [HL]
+	ld [HL+], A
+	RepointStruct HL, sleep_task + 1, SLEEP_SIZE + sleep_task
+	; now DE = delta, B = task, HL = item to start copy down at.
+
+.copy_loop
+	; DE = prev item delta, B = prev item task, HL = sleep_task of item to copy into.
+	; swap B and [HL], HL = item.delta
+	ld A, B
+	ld B, [HL]
+	ld [HL+], A
+	RepointStruct HL, sleep_task + 1, sleep_delta
+	ld A, B
+	cp $ff
+	jr z, .copy_loop_end ; next item is terminator, finish writing and stop
+	; swap DE and item.delta, point HL at next item's task
+	ld A, D
+	ld D, [HL]
+	ld [HL+], A
+	ld A, E
+	ld E, [HL]
+	ld [HL+], A
+	RepointStruct HL, sleep_delta + 2, SLEEP_SIZE + sleep_task
+	jr .copy_loop
+
+.copy_loop_end
+	ld A, E
+	ld [HL+], A
+	ld A, D
+	ld [HL+], A
+	RepointStruct HL, sleep_delta + 2, SLEEP_SIZE + sleep_task
+	ld [HL], $ff
+
+	ret
+
+; Put current task to sleep for DE time units of 2^-10 sec (~1ms)
+T_SchedSleepTask::
+	call T_DisableSwitch
+	ld A, [CurrentTask]
+	ld B, A
+	call SchedSleepTask
+	jp T_TaskYield
 
 
 ; Check to see if NextWakeTime has been reached, and if so wake the task.
@@ -203,7 +292,9 @@ CheckNextWake:
 	REPT 3
 	ld A, [C] ; A = Uptime byte
 	cp [HL] ; Set c if A < [HL], ie. if Uptime < NextWakeTime. Set z if equal.
-	reti c ; No wake, Uptime is before wake time. Ensure we re-enable interrupts.
+	jr nc, .next\@
+	reti ; No wake, Uptime is before wake time. Ensure we re-enable interrupts.
+.next\@
 	jr nz, .wake ; not equal, then Uptime > NextWakeTime, time to wake! Otherwise continue comparing.
 	inc C
 	inc HL ; inc both pointers and continue
@@ -220,26 +311,15 @@ CheckNextWake:
 
 	; Now the hard part: new values for nextwake and friends
 
-	; Copy SleepingTasks[0] to NextWake and copy everything in SleepingTasks forward
-	ld HL, SleepingTasks
-	ld C, $ff
-	ld A, [HL+]
+	; Copy SleepingTasks[0].task to NextWake
+	ld DE, SleepingTasks + sleep_task
+	ld A, [DE]
 	ld [NextWake], A
-	; iterate through array, copying everything forward an entry, up to and including terminator
-	; we count with B to get the last valid (old) index
-	cp C
-	ret z ; if first entry is $ff, we're done - there were no more sleeping tasks to move up
-	ld B, -1
-.sleeping_copy_loop
-	inc B
-	ld A, [HL-]
-	ld [HL+], A ; [HL - 1] = [HL], HL unchanged
-	inc HL
-	cp C ; set z if A was $ff
-	jp nz, .sleeping_copy_loop
+	cp A, $ff
+	ret z ; shortcut - if SleepingTasks[0] is $ff, there's no valid time to copy over anyway
 
-	; Calculate new NextWakeTime from SleepTimeDeltas[0]
-	ld DE, SleepTimeDeltas
+	; Calculate new NextWakeTime from SleepingTasks[0].delta
+	RepointStruct DE, sleep_task, sleep_delta ; DE = &(SleepingTasks[0].delta)
 	ld HL, NextWakeTime
 	; [HL:uint32le] += [DE:uint16le]
 	ld A, [DE]
@@ -256,26 +336,22 @@ CheckNextWake:
 	ld [HL+], A
 	ENDR
 
-	; Copy everything in SleepTimeDeltas forward
-	; Note that currently DE = SleepTimeDeltas + 1
-	ld A, B
-	add B ; BUG: overflow?
-	LongAddToA D,E, H,L ; HL = DE + 2*B = index into SleepTimeDeltas of second byte of last previously-valid entry
-	; We loop B times, iterating backwards along the array, saving current value for next iteration before overwriting it
-	; At the start of each iteration, prev values are in DE
-	; So to set up we start by reading into DE
-	ld A, [HL-]
-	ld D, A
-	ld A, [HL-]
-	ld E, A
-.delta_copy_loop
-	ld A, D
-	ld D, [HL]
-	ld [HL-], A
-	ld A, E
-	ld E, [HL]
-	ld [HL-], A
-	dec B
-	jp nz, .delta_copy_loop
-
+	; copy everything in SleepingTasks forward
+	; Note that currently DE = SleepingTasks + sleep_delta + 1
+	RepointStruct DE, SLEEP_SIZE, sleep_delta + 1 ; DE = &(SleepingTasks[1])
+	ld HL, SleepingTasks
+	ld C, $ff
+	; We read from DE and write to HL, checking for terminator every SLEEP_SIZE bytes
+	ld A, [DE]
+	ld [HL+], A
+	cp C
+	ret z ; early exit before entering loop proper if first byte copied is $ff
+.sleeping_copy_loop
+	REPT SLEEP_SIZE
+	inc DE
+	ld A, [DE] ; in final REPT, this loads the first byte of the next item
+	ld [HL+], A ; we want to write it regardless
+	ENDR
+	cp C ; set z if first byte of next item is $ff
+	jr nz, .sleeping_copy_loop ; loop unless we've found the terminator
 	ret
