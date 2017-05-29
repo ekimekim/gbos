@@ -90,9 +90,8 @@ PURGE ADDR
 	DisableSwitch
 	ei ; It's now safe - we can't switch out but we're done with int-critical operations
 	pop AF
-	; note we've been careful to reinstate all clobbered regs before calling TaskSave
-	call TaskSave
-	jp SchedLoadNext ; does not return
+	; note we've been careful to reinstate all clobbered regs before calling TaskYield
+	jp TaskYield ; does not return
 
 
 section "Core Utility", ROM0

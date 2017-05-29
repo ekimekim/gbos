@@ -215,8 +215,13 @@ TaskLoad::
 ; Clobbers A.
 T_TaskYield::
 	DisableSwitch
+	; fallthrough
+; For use by core code to suspend currently running task, but keep it runnable.
+TaskYield::
 	call TaskSave ; switch onto core stack
-	; TODO scheduling stuff?
+	ld A, [CurrentTask]
+	ld B, A
+	call SchedAddTask ; re-enqueue task to run again
 	jp SchedLoadNext ; does not return
 
 
@@ -233,9 +238,6 @@ T_DisableSwitch::
 T_EnableSwitch::
 	ld A, [Switchable]
 	cp 2
-	jp nz, .noswitch
-	call TaskSave ; saves our caller and switches onto core stack
-	jp SchedLoadNext ; does not return
-.noswitch
+	jp z, TaskYield ; will return to our caller later
 	EnableSwitch
 	ret

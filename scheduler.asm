@@ -69,15 +69,14 @@ SchedLoadNext::
 	jp .loop
 
 .found
-	; immediately re-enqueue it
-	RingPushNoCheck RunList, RUN_LIST_SIZE, B
-
 	ld A, B
 	jp TaskLoad ; does not return
 
 
-; Put task in B to sleep for DE time units
-SchedSleepTask::
+; Put task in B to sleep for DE time units.
+; More properly, this enqueues it to be made runnable after that time.
+; It does not remove it from the pending run list if already present.
+SchedEnqueueSleepTask::
 	; First, we calculate our target wake time by adding current time
 	; We need to disable timer interrupt for the duration so we can get a consistent read.
 	; HLDE = Uptime + DE
@@ -267,13 +266,19 @@ SchedSleepTask::
 
 	ret
 
-; Put current task to sleep for DE time units of 2^-10 sec (~1ms)
+; Task-callable version of SchedSleepTask.
+; Put current task to sleep for DE time units of 2^-10 sec (~1ms).
+; Clobbers A.
 T_SchedSleepTask::
-	call T_DisableSwitch
+	DisableSwitch
+	; fallthrough
+; For use by core code to put current task to sleep for DE time units.
+SchedSleepTask::
+	call TaskSave
 	ld A, [CurrentTask]
 	ld B, A
 	call SchedSleepTask
-	jp T_TaskYield
+	jp SchedLoadNext ; does not return
 
 
 ; Check to see if NextWakeTime has been reached, and if so wake the task.
