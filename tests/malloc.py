@@ -50,7 +50,7 @@ first_taken = Test(
 	in_B = 1,
 	in_D = 40,
 	in_GeneralDynMem = Memory(0, 0, [42]*254),
-	out_HL = 'GeneralDynMem + 256',
+	out_HL = 'GeneralDynMem + 256 + 2',
 	out_GeneralDynMem = Memory(0, 0, [42]*254, 3, 40),
 )
 
