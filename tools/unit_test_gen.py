@@ -24,8 +24,13 @@ class Memory(object):
 				self.contents += list(i)
 
 
+test_order = 0
 class Test(object):
 	def __init__(self, target=None, **kwargs):
+		global test_order
+		self.order = test_order
+		test_order += 1
+
 		self.target = target
 		self.ins = {
 			'regs': {},
@@ -222,7 +227,7 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 	if not os.path.exists(gendir):
 		os.mkdir(gendir)
 
-	for i, (testname, test) in enumerate(sorted(tests.items())):
+	for i, (testname, test) in enumerate(sorted(tests.items(), key=lambda (n,t): t.order)):
 		testname = '{i:0{w}d}_{t}'.format(i=i, t=testname, w=len(str(len(tests)-1)))
 		asm = test.gen_asm(include_asm, target, extra_asm, mems)
 		path = os.path.join(gendir, testname)
