@@ -16,7 +16,7 @@ GeneralDynMem = Memory(
 init = Test('DynMemInit',
 	in_HL = 'GeneralDynMem',
 	in_B = 4,
-	in_GeneralDynMem = [42] * 1024,
+	in_GeneralDynMem = Memory([42] * 1024),
 	out_GeneralDynMem = GeneralDynMem,
 )
 

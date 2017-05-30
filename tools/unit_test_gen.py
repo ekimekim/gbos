@@ -62,6 +62,8 @@ class Test(object):
 				high, low = name
 				state['regs'][high] = '({}) >> 8'.format(value)
 				state['regs'][low] = '({}) & $ff'.format(value)
+			else:
+				raise ValueError("Bad keyword: {!r} (not a reg, flag or Memory)".format(key))
 
 	def gen_asm(self, include_asm, target, extra_asm, mems):
 		if self.target is not None:
