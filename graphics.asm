@@ -1,6 +1,7 @@
 include "macros.asm"
 include "longcalc.asm"
 include "vram.asm"
+include "ioregs.asm"
 
 
 ; Timing info for keeping the vblank handler from running too long
@@ -83,7 +84,6 @@ _GraphicsVBlankLoop: MACRO
 	ld A, [HL+] ; A = queue length, HL now points at queue head
 	and A ; set z if A == 0
 	jp z, .inc_hl_and_next\@
-	; queue mode
 	ld C, A
 	ld D, A ; C = D = length for safekeeping
 	ld A, [HL-] ; A = queue head, HL points at queue length
@@ -127,6 +127,17 @@ ENDM
 	_GraphicsVBlankLoop 1
 	_GraphicsVBlankLoop 2
 	_GraphicsVBlankLoop 3
+
+	; If we've reached here, we either never ran out of credits, or we ran out in the last loop
+	; We check if there are any left (it's ok for us to consider 'exactly enough' as 'not enough' here)
+	ld A, B
+	and A ; set z if A == 0
+	jr z, .ret ; if we ran out, return now
+
+	; If we never ran out of credits, all queues are now empty.
+	; We disable any future vblank interrupts from happening at all, until a new value is written
+	ld HL, InterruptsEnabled
+	res 0, [HL] ; reset bit 0 of Interrupt Enable register
 
 .ret
 	pop HL
@@ -172,6 +183,11 @@ GraphicsTryWriteTile::
 	ld [HL-], A ; set head to new value, set HL to length addr
 	inc [HL] ; increment length
 	ei
+
+	; vblank interrupt handler turns itself off if it completes all work,
+	; turn it back on as we've just given it some more work.
+	ld HL, InterruptsEnabled
+	set 0, [HL] ; set vblank flag in InterruptsEnabled register
 
 	xor A ; A = 0 to indicate success
 	ret
