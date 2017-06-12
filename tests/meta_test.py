@@ -68,4 +68,17 @@ this_fails = Test(
 	out_HL = 0xcefa
 )
 
+# The 'random' global is an RNG seeded with the test suite name, and should be used
+# for any 'random' values you wish to generate. This keeps the tests consistent.
+b = random.randrange(256)
+testmem = [random.randrange(256) for _ in range(4)]
+rand_test = Test(
+	in_B = b,
+	in_TestMem = Memory(testmem),
+	out_B = (b+1) % 256,
+	out_A = (testmem[0] + testmem[1]) % 256,
+	out_TestMem = Memory(testmem[:3], (testmem[0] - testmem[1]) % 256),
+	out_zflag = (testmem[0] + testmem[1]) % 256 == testmem[2],
+)
+
 # Currently no way to specify input/output stack, but it wouldn't be much of a change.

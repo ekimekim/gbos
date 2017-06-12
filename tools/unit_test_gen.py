@@ -5,6 +5,7 @@ Rather than trying to actually document everything, see meta_test.py as an examp
 """
 
 import os
+import random
 import sys
 import time
 
@@ -203,7 +204,7 @@ jp _TestSuccess
 def process_file(top_level_dir, include_dir, tests_dir, filename):
 	name, _ = os.path.splitext(filename)
 	filepath = os.path.join(tests_dir, filename)
-	config = dict(Memory=Memory, Test=Test)
+	config = dict(Memory=Memory, Test=Test, random=random.Random(name))
 	execfile(filepath, config) # loads config as defined globals
 	if 'file' not in config:
 		raise ValueError("You must specify a target file, or None")
