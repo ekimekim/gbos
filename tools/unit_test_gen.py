@@ -110,6 +110,8 @@ _TestSuccess::
 _TestStart::
 xor A
 ld [$ffff], A ; Disable all interrupts
+ld [$ff26], A ; Disable sound
+ld [$ff40], A ; Disable video
 ld SP, _TestStack
 ; set up test
 {prepare}
