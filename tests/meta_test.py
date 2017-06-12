@@ -81,4 +81,10 @@ rand_test = Test(
 	out_zflag = (testmem[0] + testmem[1]) % 256 == testmem[2],
 )
 
+# You can leave 'gaps' in a memory spec which remain unspecified using None
+mem_none = Test(
+	in_TestMem = Memory(None, 1, 2, 3, 4),
+	out_TestMem = Memory(None, 1, 2, None, 4),
+)
+
 # Currently no way to specify input/output stack, but it wouldn't be much of a change.

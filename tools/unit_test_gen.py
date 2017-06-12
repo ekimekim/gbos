@@ -145,10 +145,9 @@ jp _TestSuccess
 		for label, values in mems.items():
 			lines += ["ld HL, {}".format(label)]
 			for value in values:
-				lines += [
-					"ld [HL], {}".format(value),
-					"inc HL",
-				]
+				if value is not None:
+					lines.append("ld [HL], {}".format(value))
+				lines.append("inc HL")
 		for flag, value in flags.items():
 			if flag == 'z':
 				if value:
@@ -193,11 +192,14 @@ jp _TestSuccess
 		for label, values in mems.items():
 			lines += ["ld HL, {}".format(label)]
 			for value in values:
-				lines += [
-					'ld A, [HL+]',
-					'cp {}'.format(value),
-					'jp nz, _TestFailure',
-				]
+				if value is None:
+					lines.append('inc HL')
+				else:
+					lines += [
+						'ld A, [HL+]',
+						'cp {}'.format(value),
+						'jp nz, _TestFailure',
+					]
 		return '\n'.join(lines)
 
 
