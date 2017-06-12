@@ -98,10 +98,12 @@ _Header::
 SECTION "{argv[0]} test harness", ROM0
 
 _TestFailure::
+	di
 	ld HL, $dead
 	jp _TestFailure
 
 _TestSuccess::
+	di
 	ld HL, $face
 	jp _TestSuccess
 
