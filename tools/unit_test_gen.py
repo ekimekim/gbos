@@ -15,14 +15,16 @@ import argh
 
 class Memory(object):
 	def __init__(self, *args):
-		self.contents = []
+		contents = []
 		for arg in args:
 			try:
 				i = iter(arg)
 			except TypeError:
-				self.contents.append(arg)
+				contents.append(arg)
 			else:
-				self.contents += list(i)
+				contents += list(i)
+		# this is needed for passing in binary strings
+		self.contents = [ord(x) if isinstance(x, basestring) else x for x in contents]
 
 
 test_order = 0
