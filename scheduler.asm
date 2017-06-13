@@ -13,7 +13,7 @@ RUN_LIST_SIZE EQU MAX_TASKS
 RunList:
 	RingDeclare RUN_LIST_SIZE
 
-; NextWakeTime is a 4-byte integer containing Uptime value at which time the next
+; NextWakeTime is a 4-byte little-endian integer containing Uptime value at which time the next
 ; sleeping task is to be woken.
 NextWakeTime:
 	ds 4
