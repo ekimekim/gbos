@@ -41,6 +41,7 @@ Start::
 	call TaskInit
 	call SchedInit
 	call GraphicsInit
+	call TestJoyPadInit
 
 	ld HL, GeneralDynMem
 	ld B, GENERAL_DYN_MEM_SIZE
@@ -55,18 +56,18 @@ Start::
 	ld [TimerCounter], A ; Uptime timer starts from here
 	ld [InterruptFlags], A ; Reset pending interrupts now that we're properly set up
 
-	ld A, IntEnableTimer | IntEnableVBlank
+	ld A, IntEnableTimer | IntEnableVBlank | IntEnableJoypad
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 
-;	ld DE, Task1
+	ld DE, Task1
+	call TaskNewDynStack
+
+;	ld DE, Task2
 ;	call TaskNewDynStack
 
-	ld DE, Task2
-	call TaskNewDynStack
-
-	ld DE, Task3
-	call TaskNewDynStack
+;	ld DE, Task3
+;	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
 
@@ -134,3 +135,4 @@ Task3::
 	cp 4 ; set z if DE = $0400
 	jr nz, .inner
 	jr .outer
+

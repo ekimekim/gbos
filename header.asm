@@ -47,7 +47,7 @@ IntSerial::
 section "Joypad Interrupt handler", ROM0 [$60]
 ; Change in joystick state
 IntJoypad::
-	reti
+	jp TestJoyInt
 
 ; Since jr is faster than jp but short-range, this code must be close to int handlers.
 section "Extended handler code", ROM0 [$68]
