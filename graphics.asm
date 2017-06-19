@@ -184,8 +184,11 @@ GraphicsTryWriteTile::
 	inc [HL] ; increment length
 	ei
 
-	; vblank interrupt handler turns itself off if it completes all work,
+	; VBlank interrupt handler turns itself off if it completes all work,
 	; turn it back on as we've just given it some more work.
+	; Make sure to clear any pending one first, or else it'll fire immediately!
+	ld HL, InterruptFlags
+	res 0, [HL] ; clear vblank flag in InterruptFlags register
 	ld HL, InterruptsEnabled
 	set 0, [HL] ; set vblank flag in InterruptsEnabled register
 
