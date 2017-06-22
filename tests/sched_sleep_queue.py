@@ -2,7 +2,6 @@
 import struct
 
 file = 'scheduler'
-files = 'tasks', 'main', 'malloc', 'graphics',
 
 target = 'SchedEnqueueSleepTask'
 

@@ -2,9 +2,6 @@
 file = 'malloc'
 target = 'DynMemAlloc'
 
-# some references to other funcs
-files = ['tasks', 'scheduler', 'main', 'graphics']
-
 GENERAL_DYN_MEM_SIZE = 4
 
 # this is the initial state assuming all uninitialized mem is set to 42

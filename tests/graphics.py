@@ -1,8 +1,6 @@
 
 file = 'graphics'
 
-files = 'tasks', 'scheduler', 'main', 'malloc',
-
 asm = """
 ; Functions being tested may enable VBlank interrupt, ensure it safely does nothing
 SECTION "graphics test vblank", ROM0[$40]

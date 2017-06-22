@@ -217,7 +217,7 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 	if 'file' not in config:
 		raise ValueError("You must specify a target file, or None")
 	include_file = config['file']
-	link_files = config.get('files', [])
+	link_files = config.get('files')
 	target = config.get('target')
 	extra_asm = config.get('asm', '')
 	mems = {label: value.contents for label, value in config.items() if isinstance(value, Memory) and not label.startswith('_')}
@@ -231,6 +231,15 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 		include_path = os.path.join(top_level_dir, '{}.asm'.format(include_file))
 		with open(include_path) as f:
 			include_asm = f.read()
+
+	if link_files is None:
+		link_files = [
+			os.path.splitext(asm_file)[0]
+			for asm_file in os.listdir(top_level_dir)
+			if asm_file.endswith('.asm') and asm_file != 'header.asm'
+		]
+		if include_file in link_files:
+			link_files.remove(include_file)
 
 	link_paths = [os.path.join(top_level_dir, '{}.o'.format(link_file)) for link_file in link_files]
 

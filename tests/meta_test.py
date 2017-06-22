@@ -6,7 +6,11 @@
 # You can say None, but it's a weird case.
 file = None
 
-# What top-level directory .asm files to link with. Default is [], shown here as an example.
+# What top-level directory .asm files to link with. Default is all top-level *.asm files
+# excepting the target file, since they tend to be very cross-dependent.
+# It also excludes 'header.asm' as this special-case file contains specific things like
+# interrupt handlers and the start address, which conflict with the test harness.
+# However, you can also set it to any explicit list or the empty list as shown here.
 files = []
 
 # function to test
