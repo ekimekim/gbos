@@ -20,6 +20,9 @@ CurrentTask rb 1
 ;   2 - An attempt to switch was made while switching was disabled
 Switchable rb 1
 
+; Most recent joypad state. Bits are, from most to least signifigant,
+; Down Up Left Right Start Select B A
+JoyState rb 1
 
 
 ; --- HRAM-related macros ---

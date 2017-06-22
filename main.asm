@@ -41,7 +41,7 @@ Start::
 	call TaskInit
 	call SchedInit
 	call GraphicsInit
-	call TestJoyPadInit
+	call JoyInit
 
 	ld HL, GeneralDynMem
 	ld B, GENERAL_DYN_MEM_SIZE

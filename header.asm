@@ -47,7 +47,7 @@ IntSerial::
 section "Joypad Interrupt handler", ROM0 [$60]
 ; Change in joystick state
 IntJoypad::
-	jp TestJoyInt
+	jp JoyInt
 
 ; Since jr is faster than jp but short-range, this code must be close to int handlers.
 section "Extended handler code", ROM0 [$68]
@@ -55,22 +55,38 @@ section "Extended handler code", ROM0 [$68]
 TimerHandler::
 	; our purpose here is to make it as fast as possible for the far-most-common case
 	; where we only increment the least signifigant byte
+	; current cycle count, assuming no switch or joy, not counting anything /256 or smaller:
+	; (before nocarry: 15 + 10/16) + (after nocarry: 14) = just under 30 on average
+	; Since it runs ~ every 1000 cycles, this means a min overhead of ~30/1000 = ~3%
 	push AF
 	; Increment 4-byte number
-ADDR SET Uptime
-REPT 3
-	ld A, [ADDR]
+	ld A, [Uptime]
 	inc A
-	ld [ADDR], A
+	ld [Uptime], A
+	and $0f
+	jr nz, .nocarry ; if lower byte != 0, we're done with incrementing.
+	; otherwise maybe do joypad scan, then check upper byte
+	ld A, [JoyState]
+	and A
+	jr nz, .nojoy
+	call JoyReadState ; TODO be careful of clobbers here
+.nojoy
+	ld A, [Uptime]
+	and A
+	jr nz, .nocarry ; if the original byte we were talking about is 0, continue. else don't.
+	ld A, [Uptime+1]
+	inc A
+	ld [Uptime+1], A
 	jr nz, .nocarry
-ADDR SET ADDR + 1
-ENDR
-	ld A, [ADDR]
+	ld A, [Uptime+2]
 	inc A
-	ld [ADDR], A
-PURGE ADDR
+	ld [Uptime+2], A
+	jr nz, .nocarry
+	ld A, [Uptime+3]
+	inc A
+	ld [Uptime+3], A
 .nocarry
-	ldh A, [SwitchTimer]
+	ld A, [SwitchTimer]
 	dec A ; set z if we're ready to switch
 	ld [SwitchTimer], A
 	jr nz, .ret ; if we aren't switching, return
