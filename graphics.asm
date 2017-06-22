@@ -45,7 +45,7 @@ SECTION "Graphics system functions", ROM0
 GraphicsInit::
 	; Load core tile data
 	ld HL, FontTileData
-	ld DE, OverlapTileMap + $20 ; first char in font is ' ' = $20
+	ld DE, OverlapTileMap + $20 * $10 ; first char in font is ' ' = $20, each char is 16 bytes
 	ld BC, FONT_TILE_DATA_SIZE
 	LongCopy ; Copy BC bytes from HL to DE
 

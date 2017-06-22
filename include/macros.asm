@@ -1,7 +1,12 @@
 
 ; Copy BC bytes (non-zero) from [HL] to [DE]. Clobbers A.
 LongCopy: MACRO
-	inc B ; adjust for an off-by-one issue in the loop exit condition
+	; adjust for an off-by-one issue in the outer loop exit condition, unless ALSO affected
+	; by an error in the inner loop exit condition that adds an extra round when C = 0
+	xor A
+	cp C
+	jr z, .loop\@
+	inc B
 .loop\@
 	ld A, [HL+]
 	ld [DE], A
