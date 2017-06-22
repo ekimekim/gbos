@@ -2,6 +2,8 @@ include "longcalc.asm"
 include "ioregs.asm"
 include "hram.asm"
 
+SELECT_BOTH EQU $0
+
 SECTION "test joypad ram", WRAM0
 
 NumJoyInts:
@@ -12,7 +14,7 @@ SECTION "test joypad code", ROM0
 TestJoyPadInit::
 	xor A
 	ld [NumJoyInts], A
-	ld A, $10 ; 0, $10, $20 or $30
+	ld A, SELECT_BOTH ; 0, $10, $20 or $30
 	ld [JoyIO], A
 	ret
 
@@ -22,7 +24,7 @@ ToHexDigit: MACRO
 	jr c, .skip\@
 	add 7
 .skip\@
-	add 48
+	add 48 - 128
 	ENDM
 
 Wait: MACRO
@@ -49,14 +51,14 @@ TestJoyInt::
 	inc A
 	ld [NumJoyInts], A
 	ld B, A
-	and $0f
+	and $f0
+	swap A
 	ToHexDigit
 	ld C, A
 	ld DE, 0
 	call GraphicsTryWriteTile
 	ld A, B
-	and $f0
-	swap A
+	and $0f
 	ToHexDigit
 	ld C, A
 	ld DE, 1
@@ -85,8 +87,14 @@ TestJoyInt::
 	and $0f
 	ToHexDigit
 	ld C, A
+	inc DE
 	call GraphicsTryWriteTile
 
+	ld A, SELECT_BOTH
+	ld [JoyIO], A
+
+	ld HL, InterruptFlags
+	res 4, [HL] ; cancel pending joypad int, if any
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; enable joypad int
 
