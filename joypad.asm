@@ -8,6 +8,18 @@ include "ioregs.asm"
 ; When we see all buttons are released, we re-enable the interrupt and stop polling.
 ; See timer interrupt for more on when polling occurs.
 
+; We munge JoyIO to a (hopefully unused!) HRAM address when running in unit tests,
+; so that we can set the inputs for specific tests. The code below puts in calls
+; to a _UnitTestUpdateJoyIO macro below after writing to JoyIO so that the unit test
+; can respond correctly to selecting lines.
+IF DEF(_IS_UNIT_TEST)
+PURGE JoyIO
+JoyIO EQU $fffe
+ELSE
+_UnitTestUpdateJoyIO: MACRO
+ENDM
+ENDC
+
 
 SECTION "Joypad management methods", ROM0
 
@@ -33,12 +45,14 @@ JoyInt::
 JoyReadState::
 	ld A, JoySelectDPad
 	ld [JoyIO], A
+	_UnitTestUpdateJoyIO
 	push BC
 	ld C, JoyIO & $ff
 	ld A, [C] ; it's been 6 cycles, should be long enough
 	ld B, A
 	ld A, JoySelectButtons
 	ld [C], A
+	_UnitTestUpdateJoyIO
 	ld A, B
 	or $f0 ; we're gonna NOT this later, so this is basically an "and $0f"
 	swap A
@@ -83,6 +97,8 @@ JoyReadState::
 	ld [C], A ; select both lines, so subsequent interrupts will fire for either dpad or buttons
 .not_now_zero
 
+	ld A, B
+	ld [JoyState], A
 	; TODO add to queue
 
 	pop HL
