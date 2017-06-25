@@ -1,5 +1,6 @@
 include "hram.asm"
 include "ioregs.asm"
+include "ring.asm"
 
 ; Joypad input is not sampled under normal circumstances to save CPU time.
 ; We set up a JoyInt to fire if any button is pressed.
@@ -21,10 +22,22 @@ ENDM
 ENDC
 
 
+JOY_QUEUE_SIZE EQU 63
+
+
+SECTION "Joypad RAM", WRAM0
+
+; Ring containing an entry for every state change in the Joypad input.
+; Each byte encodes full joypad state as per JoyState.
+JoyQueue::
+	RingDeclare JOY_QUEUE_SIZE
+
+
 SECTION "Joypad management methods", ROM0
 
 
 JoyInit::
+	RingInit JoyQueue
 	xor A
 	ld [JoyState], A ; Select both input lines
 	ld HL, InterruptsEnabled
@@ -99,7 +112,9 @@ JoyReadState::
 
 	ld A, B
 	ld [JoyState], A
-	; TODO add to queue
+
+	RingPush JoyQueue, JOY_QUEUE_SIZE, B, C ; push B to JoyQueue, clobbers C
+	; Note above may fail, but we don't care either way - we'll just drop inputs if queue is full.
 
 	pop HL
 .ret

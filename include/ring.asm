@@ -52,6 +52,28 @@ RingPushNoCheck: MACRO
 	ld [(\1) + ring_head], A
 	ENDM
 
+; Push value in reg \3 (not A, H or L) to ring at immediate \1 of capacity \2.
+; You must specify a register \4 (not A, H, L or \3) to use for working.
+; Clobbers A, H, L and \4.
+; If ring is full, sets zero flag and does nothing. Otherwise unsets zero flag.
+RingPush: MACRO
+	ld HL, (\1) + ring_head
+	ld A, [HL+]
+	RepointStruct HL, ring_head + 1, ring_tail
+	inc A
+	and \2 ; A = (head+1) % (capacity+1)
+	cp [HL] ; set z if head+1 == tail, ie. we're full
+	jr z, .end\@
+	ld \4, A ; store new head for safekeeping.
+	RepointStruct HL, ring_tail, ring_head
+	ld A, [HL] ; it would be faster to update head now, but this breaks interrupt-safety
+	LongAddToA ((\1)+ring_data) >> 8,((\1)+ring_data) & $ff, H,L ; HL = \1 + ring_data + head index
+	ld [HL], \3
+	ld HL, (\1) + ring_head
+	ld [HL], \4 ; update head
+.end\@
+ENDM
+
 ; Helper for pop macros. Args are (ring address, ring capacity, target reg)
 ; Pops into target reg assuming HL already points at tail index.
 _RingPopHL: MACRO
