@@ -200,7 +200,9 @@ GraphicsTryWriteTile::
 T_GraphicsTryWriteTile::
 	call T_DisableSwitch
 	call GraphicsTryWriteTile
-	jp T_EnableSwitch
+	ld H, A ; safekeeping, since T_EnableSwitch clobbers A
+	call T_EnableSwitch
+	ld A, H
 
 
 ; As T_GraphicsTryWriteTile, but blocks until the write succeeds.
