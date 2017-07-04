@@ -120,3 +120,32 @@ JoyReadState::
 .ret
 	pop BC
 	ret
+
+
+; Get the next event from the JoyQueue, if any.
+; Puts event in B and unsets z flag, or sets z flag if no event available.
+; Clobbers A, H, L
+JoyTryGetEvent::
+	RingPop JoyQueue, JOY_QUEUE_SIZE, B
+	ret
+
+
+; As JoyTryGetEvent, but callable from tasks
+T_JoyTryGetEvent::
+	call T_DisableSwitch
+	call JoyTryGetEvent
+	push AF ; preserve A and z flag state over call to T_EnableSwitch
+	call T_EnableSwitch
+	pop AF
+	ret
+
+
+; As T_JoyTryGetEvent, but blocks until an event is available.
+; Note: Since this may block, there is no non-T_ version
+T_JoyGetEvent::
+	; TODO for now, busy loop. Use something smarter later.
+.loop
+	call T_JoyTryGetEvent
+	jp z, .loop ; try again if not success
+	ret
+
