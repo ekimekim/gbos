@@ -234,6 +234,7 @@ T_DisableSwitch::
 	DisableSwitch
 	ret
 
+
 ; Re-enable time-share switching after a call to T_DisableSwitch.
 ; If a switch attempt was missed, this will trigger an immediate switch.
 ; Clobbers A.
@@ -243,3 +244,28 @@ T_EnableSwitch::
 	jp z, TaskYield ; will return to our caller later
 	EnableSwitch
 	ret
+
+
+; This is the only safe way for a task to switch ROM banks.
+; Sets current ROM bank for this task to C.
+; It saves state so that the task's bank can be set on each TaskLoad.
+; Clobbers A, HL
+T_SetROMBank::
+	ld A, [CurrentTask]
+	LongAddToA ((TaskList+task_rombank) >> 8),((TaskList+task_rombank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rombank = &(TaskList[CurrentTask].task_rombank)
+	ld [HL], C
+	ld A, C
+	SetROMBank
+	ret
+
+
+; This is the only safe way for a task to switch RAM banks.
+; Sets current RAM bank for this task to C.
+; It saves state so that the task's bank can be set on each TaskLoad.
+; Clobbers A, HL
+T_SetRAMBank::
+	ld A, [CurrentTask]
+	LongAddToA ((TaskList+task_rambank) >> 8),((TaskList+task_rambank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rambank = &(TaskList[CurrentTask].task_rambank)
+	ld [HL], C
+	ld A, C
+	SetRAMBank
