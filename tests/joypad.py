@@ -87,3 +87,17 @@ read_with_queue_full = Test(
 	out_JoyState = Memory(3), # JoyState updated
 	out_JoyQueue = Memory(JOY_QUEUE_SIZE, 0, queue_contents), # but JoyQueue didn't
 )
+
+joy_presses_basic = Test('T_JoyGetPress',
+	in_JoyQueue = Memory(1, 0, 3), # A+B pressed
+	in_C = 1, # initial state = A pressed
+	out_A = 2, # output: B pressed
+	out_C = 3, # final state = A+B pressed
+)
+
+joy_presses_with_release = Test('T_JoyGetPress',
+	in_JoyQueue = Memory(2, 0, 2, 3), # only B pressed, then A+B pressed
+	in_C = 3, # initial state = A+B pressed
+	out_A = 1, # output: A pressed
+	out_C = 3, # final state = A+B pressed
+)

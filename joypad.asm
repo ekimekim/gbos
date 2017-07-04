@@ -149,3 +149,24 @@ T_JoyGetEvent::
 	jp z, .loop ; try again if not success
 	ret
 
+
+; Takes previous joypad state in C, and scans joypad events until it encounters a button press.
+; It will then return new state in C and a bitmask of pressed buttons in A.
+; The A byte will contain a 1 bit for each button which became pressed.
+; In most cases this will only be one bit, but not always.
+; For example, if up+left are pressed at the exact same time, the resulting byte will be %01100000.
+; This is a very tight window and you should NOT use this to detect when to do "both pressed" behaviours.
+; Instead, you should take each bit set in each result as an independent press event.
+; Note that since this may need to get many JoyQueue events and blocks if none are available,
+; there is no non-T_ version.
+; Clobbers HL.
+T_JoyGetPress::
+.loop
+	call T_JoyGetEvent ; B = next event, possibly blocking
+	ld A, C
+	cpl
+	and B ; A = new & !old, ie. bit has gone 0->1
+	ld C, B ; regardless of whether we're done, set saved state = new state
+	jr z, .loop ; note the and above also sets z flag depending on if anything has been pressed
+	; if we've reached here, A contains pressed bits and C contains new state
+	ret
