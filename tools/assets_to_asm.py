@@ -6,7 +6,7 @@ It scans for *.json files that contain the keys:
 	            to GB data values 0-3 respectively. Pixel values depend on the mode of the image,
 	            eg. a 3-item list [R, G, B] for color images, a simple integer for greyscale.
 	"length": Optional. Number of tiles in the image. If not given, is worked out from image size.
-	"name": Optional. The name of the include file to produce. Defaults to the json file's name (not including .meta suffix).
+	"name": Optional. The name of the include file to produce. Defaults to the json file's name (not including .json suffix).
 
 Images are scanned for tiles left-to-right, then top-to-bottom. eg. in a 32x16 image, the tiles would be numbered:
 	1234
