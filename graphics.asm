@@ -203,6 +203,7 @@ T_GraphicsTryWriteTile::
 	ld H, A ; safekeeping, since T_EnableSwitch clobbers A
 	call T_EnableSwitch
 	ld A, H
+	ret
 
 
 ; As T_GraphicsTryWriteTile, but blocks until the write succeeds.

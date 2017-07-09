@@ -320,6 +320,7 @@ CheckNextWake:
 
 	; If we reached here, they're exactly equal, which counts as time to wake.
 .wake
+	ei ; might cause a double-ei if falling through from last comparison above, but doesn't matter and is faster
 	call SchedAddTask ; enqueue NextWake to be scheduled (since it's still in B)
 
 	; Now the hard part: new values for nextwake and friends
