@@ -63,11 +63,8 @@ Start::
 	ld DE, Task1
 	call TaskNewDynStack
 
-;	ld DE, Task2
-;	call TaskNewDynStack
-
-;	ld DE, Task3
-;	call TaskNewDynStack
+	ld DE, TaskPaintStart
+	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
 
