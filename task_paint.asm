@@ -8,6 +8,8 @@ TILE_B EQU 32 ; ' '
 SECTION "Task Paint bootstrap", ROM0
 
 
+; Since TaskPaintMain is in a ROM bank, we can't start execution there.
+; We use a small shim to load the correct bank first.
 TaskPaintStart::
 	ld C, BANK(TaskPaintMain)
 	call T_SetROMBank
@@ -24,7 +26,8 @@ TaskPaintMain::
 	ld E, A ; DE = screen index
 
 .mainloop
-	; TODO bounds checking on dpad arithmetic
+	; NOTE: There is nothing stopping the cursor from going off the sides of the screen
+	; and screwing everything up. This code is for example and testing purposes only.
 	call T_JoyGetPress
 
 	; Check d-pad
