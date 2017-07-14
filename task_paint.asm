@@ -1,8 +1,8 @@
 
 ; A task that allows the user to paint the screen with A or B to set/clear a tile
 
-TILE_A EQU 35 ; '#'
-TILE_B EQU 32 ; ' '
+TILE_A EQU 128+"#"
+TILE_B EQU 128+" "
 
 
 SECTION "Task Paint bootstrap", ROM0
