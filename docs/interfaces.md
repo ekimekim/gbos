@@ -105,8 +105,9 @@ and then confirm the other one is currently held using the returned state.
 Currently, the only possible graphics action is to write a tile to the main background tilemap.
 You cannot write to the alternate tilemap, or sprite ram. This will be fixed soon.
 
-The standard ascii character set is available at their standard values - eg. the character 'A'
-is tile number 65.
+The standard ascii character set is available at 128 + their standard values - eg. the character 'A'
+is tile number 128+65 = 193. This is done so that both the standard and alternate tile indexes
+can access these values.
 
 Any other tiles you may require should be added during compilation so they are loaded at OS start.
 
