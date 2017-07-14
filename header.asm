@@ -68,8 +68,8 @@ TimerHandler::
 	; otherwise maybe do joypad scan, then check upper byte
 	ld A, [JoyState]
 	and A
-	jr nz, .nojoy
-	call JoyReadState ; TODO be careful of clobbers here
+	jr z, .nojoy
+	call JoyReadState
 .nojoy
 	ld A, [Uptime]
 	and A
