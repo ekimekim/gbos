@@ -14,3 +14,13 @@ IF DEBUG_ENABLED > 0
 .end\@
 ENDC
 ENDM
+
+; As Debug, but prints \2 only if condition \1 (condition same as jp instructions) is NOT met.
+; eg. DebugIfNot nz, "foo" prints "foo" if z is set.
+DebugIfNot: MACRO
+IF DEBUG_ENABLED > 0
+	jr \1, .notmet\@
+	Debug \2
+.notmet\@
+ENDC
+ENDM
