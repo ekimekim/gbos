@@ -1,0 +1,11 @@
+#!/bin/bash
+
+FLAG_FILE="include/debug_enabled.asm"
+
+set_flag() {
+	echo "DEBUG_ENABLED EQU $1" > "$FLAG_FILE"
+}
+
+set_flag 1
+trap 'set_flag 0' exit
+make bgb

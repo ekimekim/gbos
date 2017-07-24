@@ -1,7 +1,7 @@
 
 # avoid implicit rules for clarity
 .SUFFIXES: .asm .o .gb
-.PHONY: bgb clean tests
+.PHONY: bgb clean tests debug
 
 ASMS := $(wildcard *.asm)
 OBJS := $(ASMS:.asm=.o)
@@ -33,3 +33,6 @@ bgb: rom.gb
 
 clean:
 	rm -f *.o *.sym rom.gb include/assets/.uptodate include/assets/*.asm tests/*/*.{asm,o,sym,gb}
+
+debug:
+	./debug

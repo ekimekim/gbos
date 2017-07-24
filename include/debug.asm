@@ -1,9 +1,9 @@
 
-DEBUG_ENABLED EQU 0
+include "debug_enabled.asm"
 
 ; Debug macro works in certain emulators to print a debug message \1.
 ; Currently supported: bgb only.
-; Does nothing unless DEBUG_ENABLED flag is set to 1 above
+; Does nothing unless DEBUG_ENABLED flag is set to 1 in debug_enabled.asm
 Debug: MACRO
 IF DEBUG_ENABLED > 0
 	ld d, d
