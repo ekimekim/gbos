@@ -42,17 +42,17 @@ TaskPaintMain::
 .noLeft
 	bit 6, A ; up pressed
 	jr z, .noUp
-	ld HL, 32
-	add HL, DE
-	ld D, H
-	ld E, L ; DE += 32
-.noUp
-	bit 7, A ; down pressed
-	jr z, .noDown
 	ld HL, -32
 	add HL, DE
 	ld D, H
 	ld E, L ; DE -= 32
+.noUp
+	bit 7, A ; down pressed
+	jr z, .noDown
+	ld HL, 32
+	add HL, DE
+	ld D, H
+	ld E, L ; DE += 32
 .noDown
 
 	ld B, TILE_TEMP
