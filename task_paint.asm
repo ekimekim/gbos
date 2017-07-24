@@ -3,6 +3,7 @@
 
 TILE_A EQU 128+"#"
 TILE_B EQU 128+" "
+TILE_TEMP EQU 128 + "."
 
 
 SECTION "Task Paint bootstrap", ROM0
@@ -54,6 +55,7 @@ TaskPaintMain::
 	ld E, L ; DE -= 32
 .noDown
 
+	ld B, TILE_TEMP
 	; Check buttons - since A and B at once isn't meaningful, prefer A
 	bit 0, A ; A pressed
 	jr z, .noA
@@ -61,7 +63,7 @@ TaskPaintMain::
 	jr .gotTile
 .noA
 	bit 1, A ; B pressed
-	jr z, .mainloop ; loop if no buttons pressed
+	jr z, .gotTile ; loop if no buttons pressed
 	ld B, TILE_B
 
 .gotTile
