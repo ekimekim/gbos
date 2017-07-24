@@ -106,8 +106,6 @@ JoyReadState::
 	res 4, [HL] ; clear any pending joypad interrupt
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; enable joypad interrupts
-	xor A
-	ld [C], A ; select both lines, so subsequent interrupts will fire for either dpad or buttons
 .not_now_zero
 
 	ld A, B
@@ -118,6 +116,8 @@ JoyReadState::
 
 	pop HL
 .ret
+	xor A
+	ld [JoyIO], A ; select both lines, so subsequent interrupts will fire for either dpad or buttons
 	pop BC
 	ret
 
