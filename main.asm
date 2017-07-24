@@ -3,6 +3,7 @@ include "task.asm"
 include "longcalc.asm"
 include "hram.asm"
 include "ioregs.asm"
+include "debug.asm"
 
 
 Section "Core Stack", WRAM0
@@ -24,6 +25,8 @@ Start::
 	xor A
 	ld [SoundControl], A
 	ld [LCDControl], A
+
+	Debug "Debug messages enabled. Expression test: A = %A%"
 
 	; Use core stack
 	ld SP, CoreStack
