@@ -81,14 +81,14 @@ Task1::
 	ld HL, $face
 .loop
 	inc A
-	jp .loop
+	jr .loop
 
 
 Task2::
 	ld B, 10
 	call Fib
 .loop
-	jp .loop
+	jr .loop
 
 ; return Bth fibbonacci number in DE
 ; clobbers A

@@ -83,7 +83,7 @@ GraphicsVBlank::
 _GraphicsVBlankLoop: MACRO
 	ld A, [HL+] ; A = queue length, HL now points at queue head
 	and A ; set z if A == 0
-	jp z, .inc_hl_and_next\@
+	jr z, .inc_hl_and_next\@
 	ld C, A
 	ld D, A ; C = D = length for safekeeping
 	ld A, [HL-] ; A = queue head, HL points at queue length
@@ -95,7 +95,7 @@ _GraphicsVBlankLoop: MACRO
 	and A ; set z if we have no time credits left
 	jp z, .ret ; return if we're out of time
 	sub C ; A = time credits - items, set c if too many items
-	jp nc, .can_afford\@
+	jr nc, .can_afford\@
 	ld C, B ; C = all remaining time credits
 	xor A ; A = 0 in prep for next line, faster than having two paths
 .can_afford\@
@@ -116,7 +116,7 @@ _GraphicsVBlankLoop: MACRO
 	ld [DE], A ; set value in array
 	inc L
 	dec C
-	jp nz, .queue_loop\@ ; consider unrolling? lose granularity in time credits
+	jr nz, .queue_loop\@ ; consider unrolling? lose granularity in time credits
 	pop HL ; HL = next queue length
 
 .inc_hl_and_next\@
@@ -214,5 +214,5 @@ T_GraphicsWriteTile::
 .loop
 	call T_GraphicsTryWriteTile
 	and A ; set z on success
-	jp nz, .loop
+	jr nz, .loop
 	ret

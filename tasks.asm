@@ -20,14 +20,14 @@ TaskInit::
 	xor A
 	ld B, MAX_TASKS
 	ld HL, TaskList + task_sp
-	jp .start
+	jr .start
 .loop
 	LongAddConst HL, TASK_SIZE + (-2) ; TASK_SIZE - 2 is a syntax error for some reason
 .start
 	ld [HL+], A
 	ld [HL+], A
 	dec B
-	jp nz, .loop
+	jr nz, .loop
 	ret
 
 
@@ -36,7 +36,7 @@ TaskInit::
 TaskFindNextFree:
 	ld HL, TaskList + task_sp
 	ld B, MAX_TASKS - 1
-	jp .start
+	jr .start
 .loop
 	dec B
 	; if B underflowed, we checked all MAX_TASKS without breaking
@@ -46,7 +46,7 @@ TaskFindNextFree:
 .start
 	ld A, [HL+]
 	or [HL] ; set z only if both A and [HL] are 0
-	jp nz, .loop
+	jr nz, .loop
 	; If we got here, HL = TaskList + first free task id + task_sp + 1
 	; so we want to find HL - (TaskList + task_sp + 1).
 	; Since we know the final result is < 256, we only need to do the lower half
@@ -109,7 +109,7 @@ TaskNewDynStack::
 	pop DE
 	ld A, H
 	or L ; H or L -> set Z if HL == $0000
-	jp nz, .nofail
+	jr nz, .nofail
 	; return failure since we couldn't allocate a stack
 	ld B, $ff
 	ret
@@ -118,7 +118,7 @@ TaskNewDynStack::
 	; we want to give the top of the stack
 	ld A, DYN_MEM_STACK_SIZE
 	LongAddToA H,L, H,L ; HL += stack size
-	jp TaskNewWithID ; tail call
+	jr TaskNewWithID ; tail call
 
 
 ; Task-callable versions of TaskNew family

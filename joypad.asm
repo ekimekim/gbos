@@ -146,7 +146,7 @@ T_JoyGetEvent::
 	; TODO for now, busy loop. Use something smarter later.
 .loop
 	call T_JoyTryGetEvent
-	jp z, .loop ; try again if not success
+	jr z, .loop ; try again if not success
 	ret
 
 

@@ -33,7 +33,7 @@ section "Dynamic Memory Management Routines", ROM0
 DynMemInit::
 	ld A, $ff
 	dec B
-	jp z, .last
+	jr z, .last
 .loop
 	inc A ; A = 0
 	ld [HL+], A ; chunk_len = 0 -> length 256, HL points to chunk_owner
@@ -41,7 +41,7 @@ DynMemInit::
 	ld [HL-], A ; owner = $ff (unowned), HL points to chunk_len
 	inc H ; HL += 256, putting us at the start of the next chunk
 	dec B
-	jp nz, .loop
+	jr nz, .loop
 .last
 	; last 256 needs to reserve a byte for the sentinel
 	ld [HL+], A ; chunk_len = $ff -> length 255, HL points to chunk_owner
@@ -60,15 +60,15 @@ DynMemInit::
 DynMemAlloc::
 	; Simple allocation algorithm - first fit.
 	inc B ; B = desired chunk length - 1, usable data + 1
-	jp .start
+	jr .start
 .loop
 	; A = chunk length - 1, HL points at chunk_owner
 	ld C, A ; for safekeeping
 	cp B ; set carry if A - B < 0, ie. A < B
 	ld A, [HL] ; A = owner
-	jp c, .nomatch ; jump if A < B
+	jr c, .nomatch ; jump if A < B
 	cp $ff ; set z if chunk is unused
-	jp nz, .nomatch
+	jr nz, .nomatch
 	; This allocation is good! Slice it off if we can and return it.
 	ld A, D ; A = new owner id
 	ld [HL-], A ; Set chunk as owned, point HL at chunk length
@@ -76,7 +76,7 @@ DynMemAlloc::
 	sub B ; A = excess bytes in allocation
 	ld C, A ; for safekeeping
 	cp 3 ; set carry if A < 3
-	jp c, .nosplit ; if we have < 3 bytes of excess, can't split since result wouldn't fit chunk header
+	jr c, .nosplit ; if we have < 3 bytes of excess, can't split since result wouldn't fit chunk header
 	push HL ; push chunk start addr for safekeeping
 	ld A, B
 	inc A ; A = desired chunk length
@@ -98,7 +98,7 @@ DynMemAlloc::
 .start
 	ld A, [HL+] ; A = chunk length, HL points at chunk_owner
 	dec A ; A = chunk length - 1, set Z if A = 1 (end of range), wraps to 255 if A = 0 (ie. 256)
-	jp nz, .loop
+	jr nz, .loop
 	; Couldn't find a suitable allocation
 	ld HL, $00
 	ret

@@ -57,9 +57,9 @@ SchedLoadNext::
 	; TODO checking for now-enquable items goes here
 	call CheckNextWake
 	RingPop RunList, RUN_LIST_SIZE, B
-	jp nz, .found
+	jr nz, .found
 	halt
-	jp .loop
+	jr .loop
 
 .found
 	ld A, B
@@ -108,7 +108,7 @@ SchedEnqueueSleepTask::
 	; check if NextWake is empty ($ff) - if so, we can just put target time in and finish
 	ld A, [NextWake]
 	cp $ff
-	jp nz, .not_empty
+	jr nz, .not_empty
 	ld B, H
 	ld C, L
 	ld HL, NextWakeTime ; to make below load faster, BC = HL so we can use HL for NextWakeTime addr
@@ -140,7 +140,7 @@ SchedEnqueueSleepTask::
 	;   carry is unset, BC = time from target time to NextWakeTime
 	; if our target time was after NextWakeTime:
 	;   carry is set, BC = -(time from NextWakeTime to target time)
-	jp c, .target_after_next
+	jr c, .target_after_next
 
 	; target time is before NextWake, swap them and push old NextWake to sleeping tasks instead
 	; NextWakeTime = HLDE = target time
