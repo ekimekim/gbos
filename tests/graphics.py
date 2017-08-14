@@ -9,6 +9,8 @@ SECTION "graphics test vblank", ROM0[$40]
 
 init = Test('GraphicsInit',
 	out_TileQueueInfo = Memory([0] * 8),
+	out_WorkingSprites = Memory([0, None, None, None] * 40),
+	out_DirtySprites = Memory(0),
 )
 
 
@@ -39,6 +41,18 @@ write_tile_full = Test('GraphicsTryWriteTile',
 	out_InterruptsEnabled = Memory(0), # vblank remains disabled
 )
 
+write_sprite = Test('GraphicsWriteSprite',
+	in_WorkingSprites = Memory([0] * 160),
+	in_A = 6, # Write a vertically-flipped G at position 32x40 to sprite index 6
+	in_B = 32,
+	in_C = 40,
+	in_D = 128 + ord('G'),
+	in_E = 64|32,
+	in_DirtySprites = Memory(0),
+	out_DirtySprites = Memory(1),
+	out_WorkingSprites = Memory([0] * 4 * 6, 40, 42, 128 + ord('G'), 64|32),
+)
+
 
 VBLANK_INITIAL_CREDITS = 60
 
@@ -46,6 +60,7 @@ writes = [(x, x+10) for x in range(60, 80)] # pos, value to set range 60-80 to v
 random.shuffle(writes)
 writes = sum(map(list, writes), []) # flatten
 vblank_small = Test('GraphicsVBlank',
+	in_DirtySprites = Memory(0),
 	in_TileQueueInfo = Memory(0, 0, 20, 40, [0]*4), # 2nd queue has 20 items with head 40
 	in_TileQueues = Memory([None]*256, writes),
 	in_InterruptsEnabled = Memory(1),
@@ -55,8 +70,28 @@ vblank_small = Test('GraphicsVBlank',
 )
 
 vblank_large = Test('GraphicsVBlank',
+	in_DirtySprites = Memory(0),
 	in_TileQueueInfo = Memory([128, 0]*4), # completely full
 	in_InterruptsEnabled = Memory(1),
 	out_TileQueueInfo = Memory(128 - VBLANK_INITIAL_CREDITS, 0, [128, 0]*3),
 	out_InterruptsEnabled = Memory(1), # vblank remains enabled
+)
+
+# 40 sprites arranged diagonally top-left to bottom-right, following ascii starting from '0',
+# randomly flipped vertically, horizontally or both
+sprites = [
+	(y, y+8, t, random.randrange(3) << 5)
+	for (y, t) in zip(
+		range(16, 160, 3),
+		range(128 + ord('0'), 128 + ord('0') + 40)
+	)
+]
+vblank_sprites = Test('GraphicsVBlank',
+	in_InterruptsEnabled = Memory(1),
+	in_DirtySprites = Memory(1),
+	in_WorkingSprites = Memory(*sprites),
+	in_TileQueueInfo = Memory([0] * 8), # empty tile queues
+	out_DirtySprites = Memory(0),
+	out_InterruptsEnabled = Memory(0), # vblank was disabled
+	out_SpriteTable = Memory(*sprites),
 )
