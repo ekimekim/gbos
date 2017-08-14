@@ -25,6 +25,17 @@ Switchable rb 1
 JoyState rb 1
 
 
+; Whether working sprite ram should be copied into real sprite ram next VBlank:
+; 0 - Not dirty (don't copy)
+; 1 - Dirty (copy)
+DirtySprites rb 1
+
+; This is where the DMA wait routine will be copied in. This size must match that routine's size.
+; The routine is not heavily size-optimised, and can be changed if we're short on HRAM.
+DMA_WAIT_SIZE EQU 10
+DMAWait rb DMA_WAIT_SIZE
+
+
 ; --- HRAM-related macros ---
 
 ; Prevent switching tasks due to time-sharing, for use in critical sections.

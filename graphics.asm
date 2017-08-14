@@ -2,10 +2,14 @@ include "macros.asm"
 include "longcalc.asm"
 include "vram.asm"
 include "ioregs.asm"
+include "hram.asm"
 
 
 ; Timing info for keeping the vblank handler from running too long
 VBLANK_INITIAL_CREDITS EQU 60
+; One credit is very roughly 11 cycles. DMA + setup takes a bit over 160 cycles.
+; 160/11 ~= 14.5, we add a little leeway
+VBLANK_SPRITE_DMA_COST EQU 16
 
 
 SECTION "Core assets", ROM0
@@ -37,6 +41,18 @@ SECTION "Graphics system aligned RAM", WRAMX[$d000]
 TileQueues:
 	ds 256 * 4
 
+; An aside on the tradeoffs of the same approach as above for OAM (sprite) RAM.
+; If we were to use this method, it would cost us 256b of RAM, and 45+11/item cycles.
+; In comparison, using the hardware DMA method costs us 160b of RAM and 160 cycles.
+; It only takes 11 items before the queue method is slower.
+; We still use a dirty flag to know when to do the DMA,
+; though we store that dirty flag in HRAM so we can clear it during otherwise useless DMA time.
+
+; This is the shadow sprite table that can be updated whenever and gets copied during VBlank.
+; Aligned so we can do DMA.
+WorkingSprites::
+	ds 40 * 4
+
 
 SECTION "Graphics system functions", ROM0
 
@@ -56,7 +72,61 @@ REPT 8
 	ld [HL+], A
 ENDR
 
+	; Init sprite ram (and working sprites) to disable all sprites by setting Y = 0
+	ld HL, WorkingSprites
+	ld B, 40
+	call ClearSprites
+	ld HL, SpriteTable
+	ld B, 40
+	call ClearSprites
+
+	; Init DirtySprites to not dirty
+	xor A
+	ld [DirtySprites], A
+
+	; Copy DMAWait into place
+	ld HL, _DMAWaitROM
+	ld DE, DMAWait
+	ld B, DMA_WAIT_SIZE
+	Copy ; Copy B bytes from HL to DE
+
 	ret
+
+
+; Helper function that disables B sprites starting from address HL.
+; We disable sprites by setting Y = 0.
+; Clobbers A, B, HL.
+ClearSprites::
+	xor A
+.loop
+	ld [HL+], A
+	inc L
+	inc L
+	inc L ; note we know L won't wrap because sprite ram is always aligned
+	dec B
+	jr nz, .loop
+	ret
+
+
+; Function that executes in HRAM during an ongoing DMA.
+; Do not call this function - it gets copied to DMAWait in HRAM. Call that instead.
+; It also clears DirtySprites.
+; Expects A = high byte of WorkingSprites to save space.
+; Clobbers A.
+_DMAWaitROM:
+	ldh [DMATransfer], A ; initiate DMA transfer. start 160 cycle timer. 2 bytes.
+	ld A, 39 ; 2 cycles. 2 bytes.
+.loop ; Loop runs for 38*4 + 1*3 = 155 cycles
+	dec A ; 1 cycle. 1 byte.
+	jr nz, .loop ; 3 cycles if taken, 2 if not. 2 bytes.
+	ldh [DirtySprites], A ; DirtySprites = 0. 3 cycles. 2 bytes.
+	; we should be done with the DMA by now, since ret accesses [SP].
+	; cycles passed: 2 + 155 + 3 = 160.
+	ret ; 1 byte
+DMA_WAIT_SIZE_ACTUAL EQU @ - _DMAWaitROM
+IF DMA_WAIT_SIZE_ACTUAL != DMA_WAIT_SIZE
+FAIL "DMAWait routine size mismatch: Expected {DMA_WAIT_SIZE}, got {DMA_WAIT_SIZE_ACTUAL}"
+ENDC
 
 
 ; VBlank handler that actually does the writes.
@@ -77,6 +147,17 @@ GraphicsVBlank::
 
 	; A possible improvement - read io regs to determine where in vblank we are,
 	; preventing a delayed interrupt from causing havoc.
+
+	; Sprites get priority update over background
+	ld A, [DirtySprites]
+	and A ; set z if A = 0
+	jr z, .no_sprites
+	ld A, B ; TODO we can do this bit during the DMA to shave cycles
+	sub VBLANK_SPRITE_DMA_COST ; note we assume we can always afford since we're first priority
+	ld B, A
+	ld A, WorkingSprites >> 8
+	call DMAWait ; calls into HRAM routine to do the transfer and unset DirtySprites
+.no_sprites
 
 ; Helper macro for unrolling loop. Takes loop iteration 0-3 as \1.
 ; Cycle cost (worst case): 45 + 11/item
@@ -216,3 +297,33 @@ T_GraphicsWriteTile::
 	and A ; set z on success
 	jr nz, .loop
 	ret
+
+
+; Writes a sprite to the sprite table and sets the flag for it to be drawn next frame.
+; A = sprite index, B = X coord, C = Y coord, D = Tile number, E = flags.
+; Clobbers HL.
+GraphicsWriteSprite::
+	rla
+	rla ; Shift A left twice, ie. A = 4 * A. Note the rotate is equiv to shift because A < 64.
+	LongAddToA WorkingSprites >> 8,WorkingSprites & $ff, H,L ; HL = WorkingSprites + A
+	; In order to avoid a half-written sprite from being drawn, we ensure no draw will occur
+	; until we are done. We do this by clearing the dirty flag regardless of whether it was set.
+	; We know this won't be overwritten because we've disabled switching when calling this function.
+	xor A
+	ld [DirtySprites], A
+	ld A, C
+	ld [HL+], A ; Y coord = C, HL points to X coord
+	ld A, B
+	ld [HL+], A ; X coord = B, HL points to tile number
+	ld A, D
+	ld [HL+], A ; Tile number = D, HL points to flags
+	ld [HL], E ; Flags = E
+	; Now we set the dirty flag so the sprite will be drawn next frame.
+	ld A, 1
+	ld [DirtySprites], A
+	ret
+
+T_GraphicsWriteSprite::
+	call T_DisableSwitch
+	call GraphicsWriteSprite
+	jp T_EnableSwitch

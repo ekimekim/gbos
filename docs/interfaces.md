@@ -102,8 +102,8 @@ and then confirm the other one is currently held using the returned state.
 
 ### Graphics
 
-Currently, the only possible graphics action is to write a tile to the main background tilemap.
-You cannot write to the alternate tilemap, or sprite ram. This will be fixed soon.
+Currently, you can write a tile to the main background tilemap or write to the sprite table.
+You cannot write to the alternate tilemap.
 
 The standard ascii character set is available at 128 + their standard values - eg. the character 'A'
 is tile number 128+65 = 193. This is done so that both the standard and alternate tile indexes
@@ -123,3 +123,19 @@ of the tilemap. At the next vblank, this value will be written to the screen.
 If the graphics queue gets full, `T_GraphicsWriteTile` will block the task until a space is available.
 If this behaviour is undesirable, use `T_GraphicsTryWriteTile`, which may indicate failure if the queue
 is full.
+
+#### Writing to the sprite table
+
+We maintain a copy of the sprite table in `WorkingSprites` in normal RAM.
+
+A task may edit this copy at any time, however beware that your changes may be copied into
+the real sprite table and drawn on screen at any time - that includes if, say, you've changed a sprite's
+position but not yet finished by changing its tile number!
+
+After you've made changes, you must set `DirtySprites` in HRAM to `1` in order to trigger a copy
+into real sprite RAM at the start of the next frame.
+
+A helper function `T_GraphicsWriteSprite` has been provided which allows you to atomically change
+multiple values of a sprite (avoiding the partial write issue above) and automatically sets the dirty flag.
+
+It is suggested that you use this function for all but the simplest cases.
