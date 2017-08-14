@@ -132,7 +132,7 @@ A task may edit this copy at any time, however beware that your changes may be c
 the real sprite table and drawn on screen at any time - that includes if, say, you've changed a sprite's
 position but not yet finished by changing its tile number!
 
-After you've made changes, you must set `DirtySprites` in HRAM to `1` in order to trigger a copy
+After you've made changes, you must call `T_GraphicsSetDirtySprites` in order to trigger a copy
 into real sprite RAM at the start of the next frame.
 
 A helper function `T_GraphicsWriteSprite` has been provided which allows you to atomically change

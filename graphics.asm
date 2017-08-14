@@ -228,6 +228,17 @@ ENDM
 	reti
 
 
+; VBlank interrupt handler turns itself off if it completes all work,
+; this function turns it back on and should be called after giving it more work.
+; Clobbers HL.
+GraphicsEnableVBlank::
+	; Make sure to clear any pending VBlank first, or else it'll fire immediately!
+	ld HL, InterruptFlags
+	res 0, [HL] ; clear vblank flag in InterruptFlags register
+	ld HL, InterruptsEnabled
+	set 0, [HL] ; set vblank flag in InterruptsEnabled register
+	ret
+
 
 ; Set tile at tilemap index DE to value C
 ; Sets A to 0 on success, otherwise on failure.
@@ -265,13 +276,7 @@ GraphicsTryWriteTile::
 	inc [HL] ; increment length
 	ei
 
-	; VBlank interrupt handler turns itself off if it completes all work,
-	; turn it back on as we've just given it some more work.
-	; Make sure to clear any pending one first, or else it'll fire immediately!
-	ld HL, InterruptFlags
-	res 0, [HL] ; clear vblank flag in InterruptFlags register
-	ld HL, InterruptsEnabled
-	set 0, [HL] ; set vblank flag in InterruptsEnabled register
+	call GraphicsEnableVBlank
 
 	xor A ; A = 0 to indicate success
 	ret
@@ -319,11 +324,24 @@ GraphicsWriteSprite::
 	ld [HL+], A ; Tile number = D, HL points to flags
 	ld [HL], E ; Flags = E
 	; Now we set the dirty flag so the sprite will be drawn next frame.
+	jp GraphicsSetDirtySprites
+
+
+; Set dirty sprites flag so that sprites will be drawn to screen next frame.
+; Clobbers A, HL
+GraphicsSetDirtySprites::
 	ld A, 1
 	ld [DirtySprites], A
-	ret
+	jp GraphicsEnableVBlank
+
 
 T_GraphicsWriteSprite::
 	call T_DisableSwitch
 	call GraphicsWriteSprite
+	jp T_EnableSwitch
+
+
+T_GraphicsSetDirtySprites::
+	call T_DisableSwitch
+	call GraphicsSetDirtySprites
 	jp T_EnableSwitch
