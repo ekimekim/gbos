@@ -50,7 +50,7 @@ write_sprite = Test('GraphicsWriteSprite',
 	in_E = 64|32,
 	in_DirtySprites = Memory(0),
 	out_DirtySprites = Memory(1),
-	out_WorkingSprites = Memory([0] * 4 * 6, 40, 42, 128 + ord('G'), 64|32),
+	out_WorkingSprites = Memory([0] * 4 * 6, 40, 32, 128 + ord('G'), 64|32),
 )
 
 
@@ -87,10 +87,10 @@ sprites = [
 	)
 ]
 vblank_sprites = Test('GraphicsVBlank',
+	pre_asm = "call GraphicsInit", # set up hram routine and empty tile queues
 	in_InterruptsEnabled = Memory(1),
 	in_DirtySprites = Memory(1),
 	in_WorkingSprites = Memory(*sprites),
-	in_TileQueueInfo = Memory([0] * 8), # empty tile queues
 	out_DirtySprites = Memory(0),
 	out_InterruptsEnabled = Memory(0), # vblank was disabled
 	out_SpriteTable = Memory(*sprites),
