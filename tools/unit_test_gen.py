@@ -29,12 +29,14 @@ class Memory(object):
 
 test_order = 0
 class Test(object):
-	def __init__(self, target=None, **kwargs):
+	def __init__(self, target=None, pre_asm=[], post_asm=[], **kwargs):
 		global test_order
 		self.order = test_order
 		test_order += 1
 
 		self.target = target
+		self.pre_asm = [pre_asm] if isinstance(pre_asm, basestring) else pre_asm
+		self.post_asm = [post_asm] if isinstance(post_asm, basestring) else post_asm
 		self.ins = {
 			'regs': {},
 			'flags': {},
@@ -151,7 +153,7 @@ jp _TestSuccess
 			mems[label] = l + g[len(l):]
 
 		# our approach: mems first, then flags, then regs
-		lines = []
+		lines = list(self.pre_asm)
 		for label, values in mems.items():
 			lines += ["ld HL, {}".format(label)]
 			for value in values:
@@ -180,7 +182,7 @@ jp _TestSuccess
 
 		# we need to be careful here not to clobber state as we go.
 		# we check flags, then reg A, then other regs, then mems.
-		lines = []
+		lines = list(self.post_asm)
 		for flag, value in flags.items():
 			predicate = '{}{}'.format(('n' if value else ''), flag) # eg. for z, True -> 'nz'
 			lines += ["jp {}, _TestFailure".format(predicate)]

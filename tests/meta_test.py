@@ -91,4 +91,15 @@ mem_none = Test(
 	out_TestMem = Memory(None, 1, 2, None, 4),
 )
 
+# You can specify arbitrary asm to run before setup or immediately after the call.
+# Note any registers set by pre_asm may be clobbered before the call.
+# Note any post_asm runs before checkout out_* values and must be careful to preserve them.
+# Asm can be string or list of lines.
+pre_and_post_asm = Test(
+	pre_asm = "ld B, 10",
+	post_asm = ["ld A, B", "add A"],
+	out_A = 22,
+	out_B = 11,
+)
+
 # Currently no way to specify input/output stack, but it wouldn't be much of a change.
