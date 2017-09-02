@@ -43,9 +43,67 @@ TimerFreq14 EQU 3
 ; VBlank, LCDC, Timer, Serial and Joystick interrupts.
 InterruptFlags EQU $ff0f
 
-; $ff10 - $ff3f are sound registers, which I'm not gonna touch.
-; Except for this one: Sound control. Sets individual channels on or off for bits 0-3,
-; sets all sound on/off for bit 7. You should set this to 0 on start to disable sound.
+; $ff10 - $ff3f are sound registers:
+
+; Channel 1 Sweep register. Controls frequency sweeps.
+; Bits 0-2 control how much it changes each step. According to bgb docs, it changes by old freq / 2^n
+; where n is this number 0-7. However, experiments with bgb show that no sweep occurs if n = 0.
+; Bit 3 controls increasing (0) or decreasing (1) frequency.
+; Bits 4-6 select sweep time, or 0 to disable sweep. bgb docs get confusing here but it seems
+; roughly like step frequency = 128/n Hz where n is this number 1-7.
+SoundCh1Sweep EQU $ff10
+; Channel 1 Duration / Duty register. Controls how long to play, and duty cycle of square wave.
+SoundCh1LengthDuty EQU $ff11
+; Channel 1 volume envelope register. Controls volume and volume sweeps.
+SoundCh1Volume EQU $ff12
+; Channel 1 Frequency and general control. 11 bits of freq.
+; The top 5 bits of the high byte are reused as control.
+SoundCh1FreqLo EQU $ff13
+SoundCh1Control EQU $ff14
+
+; Channel 2 Duration / Duty register. Controls how long to play, and duty cycle of square wave.
+SoundCh2LengthDuty EQU $ff16
+; Channel 2 volume envelope register. Controls volume and volume sweeps.
+SoundCh2Volume EQU $ff17
+; Channel 2 Frequency and general control. 11 bits of freq.
+; The top 5 bits of the high byte are reused as control.
+SoundCh2FreqLo EQU $ff18
+SoundCh2Control EQU $ff19
+
+; Channel 3 on/off register.
+SoundCh3OnOff EQU $ff1a
+; Channel 3 duration register. Controls how long to play.
+SoundCh3Length EQU $ff1b
+; Channel 3 volume control. Selects 100%, 50% or 25% volume or mute with bits 5-6.
+SoundCh3Volume EQU $ff1c
+; Channel 3 Frequency and general control. 11 bits of freq.
+; The top 5 bits of the high byte are reused as control.
+SoundCh3FreqLo EQU $ff1d
+SoundCh3Control EQU $ff1e
+; Channel 3 custom wave data. 32 4-bit samples, upper nibble first. Runs from $ff30-$ff3f.
+SoundCh3Data EQU $ff30
+
+; Channel 4 duration register. Controls how long to play.
+SoundCh4Length EQU $ff20
+; Channel 4 volume envelope register. Controls volume and volume sweeps.
+SoundCh4Volume EQU $ff21
+; Channel 4 RNG control. Controls frequency and behaviour of white noise randomizer.
+SoundCh4RNG EQU $ff22
+; Channel 4 general control.
+SoundCh4Control EQU $ff23
+
+; Output channel control. For each nibble, bottom 3 bits control volume and top indicates if Vin
+; cartridge audio should be routed to that output channel.
+; Top nibble is left channel, bottom nibble is right channel.
+SoundVolume EQU $ff24
+; Control of what generator channels should be routed to each output channel.
+; For each nibble, bits 0-3 correspond to generator channels 1-4.
+; Top nibble is left channel, bottom nibble is right channel.
+SoundMux EQU $ff25
+
+; Sound control. Read if individual channels are currently on or off for bits 0-3,
+; sets all sound on/off for bit 7. You should set this to 0 on start to disable sound,
+; as initial sound channel values are random.
 SoundControl EQU $ff26
 
 ; "LCDC" LCD control register. Defaults to $91. Write to these bits to control the display mode:
@@ -110,6 +168,17 @@ SpritePaletteSolid EQU $ff49
 ; If X or Y is set greater than 166 or 143 respectively, window will not show.
 WindowY EQU $ff4a
 WindowX EQU $ff4b
+
+; "KEY1" Game Boy Color speed switch.
+; Bit 7 is unset/set when in normal/double speed respectively.
+; Bit 0 should be set to 1, then a STOP command issued to switch modes.
+CGBSpeedSwitch EQU $ff4d
+
+; "RP" Game Boy Color infrared IO.
+; When bit 0 is set, we are sending a signal.
+; When bits 6 and 7 are set, bit 1 will contain whether we're currently detecting a signal.
+; Bit 1 will be unset when a signal is detected, and set otherwise.
+CGBInfrared EQU $ff56
 
 ; "IE" Interrupt Enable flags. Write to this register to selectively disable interrupts.
 ; Bits 0-4 control off/on for respectively: VBlank, LCDC, Timer, Serial, Joypad
