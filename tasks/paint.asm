@@ -6,17 +6,6 @@ TILE_B EQU 128+" "
 TILE_TEMP EQU 128 + "."
 
 
-SECTION "Task Paint bootstrap", ROM0
-
-
-; Since TaskPaintMain is in a ROM bank, we can't start execution there.
-; We use a small shim to load the correct bank first.
-TaskPaintStart::
-	ld C, BANK(TaskPaintMain)
-	call T_SetROMBank
-	jp TaskPaintMain
-
-
 SECTION "Task Paint code", ROMX
 
 

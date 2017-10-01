@@ -67,7 +67,7 @@ Start::
 	SetTaskNewEntryPoint Task1
 	call TaskNewDynStack
 
-	SetTaskNewEntryPoint TaskPaintStart
+	SetTaskNewEntryPoint TaskPaintMain
 	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
