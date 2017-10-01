@@ -57,7 +57,7 @@ TaskFindNextFree:
 	ret
 
 
-; Create a new task with entry point in DE, and initial stack pointer in HL.
+; Create a new task with entry point in DE, initial stack pointer in HL and inital ROM bank in C.
 ; Returns the new task id in B, or 255 if no task could be allocated.
 TaskNewWithStack::
 	; Pick a task id
@@ -69,7 +69,7 @@ TaskNewWithStack::
 	ret z ; if B == 255, exit early with failure
 	; fall through to TaskNewWithID
 ; Create a new task with entry point in DE, initial stack pointer in HL,
-; and new task id in B.
+; initial ROM bank in C and new task id in B.
 TaskNewWithID:
 	; prepare the initial stack, which can be mostly garbage.
 	dec HL
@@ -86,14 +86,15 @@ TaskNewWithID:
 	ld A, E
 	ld [HL+], A ; [HL] = DE, this sets the initial stack pointer
 	RepointStruct HL, task_sp+2, task_rombank
-	xor A
-	ld [HL+], A
+	ld A, C
+	ld [HL+], A ; [HL] = C, this sets the initial ROM bank
 	RepointStruct HL, task_rombank+1, task_rambank
-	ld [HL], A
+	xor A
+	ld [HL], A ; [HL] = 0, this sets the initial RAM bank
 	jp SchedAddTask ; schedule new task to run and return
 
 
-; Create a new task with entry point in DE, and a stack allocated from dynamic memory.
+; Create a new task with entry point in DE, ROM bank C (or 0) and a stack allocated from dynamic memory.
 ; Returns the new task id in B, or 255 if no task could be allocated.
 TaskNewDynStack::
 	call TaskFindNextFree ; B = new task id or 255
@@ -101,11 +102,13 @@ TaskNewDynStack::
 	cp $ff
 	ret z ; if B = 255, exit early with failure
 	push DE
-	ld D, B
+	ld D, B ; this sets task ownership of allocated mem
+	ld E, C ; storing B and C in D and E is faster than push and pop
 	ld B, DYN_MEM_STACK_SIZE
 	ld HL, GeneralDynMem
 	call DynMemAlloc ; allocate stack in the name of task D, put in HL
 	ld B, D
+	ld C, E ; restore B and C
 	pop DE
 	ld A, H
 	or L ; H or L -> set Z if HL == $0000

@@ -1,9 +1,9 @@
 include "constants.asm"
-include "task.asm"
 include "longcalc.asm"
 include "hram.asm"
 include "ioregs.asm"
 include "debug.asm"
+include "macros.asm"
 
 
 Section "Core Stack", WRAM0
@@ -63,10 +63,11 @@ Start::
 	ld [InterruptsEnabled], A
 	ei ; note we've still got switching disabled until we switch into our first task
 
-	ld DE, Task1
+	ld C, 0
+	SetTaskNewEntryPoint Task1
 	call TaskNewDynStack
 
-	ld DE, TaskPaintStart
+	SetTaskNewEntryPoint TaskPaintStart
 	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return

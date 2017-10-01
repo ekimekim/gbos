@@ -66,3 +66,11 @@ SetROMBank: MACRO
 SetRAMBank: MACRO
 	ld [$4000], A
 	ENDM
+
+; Convenience method to set up for calling TaskNew functions
+; It takes the given entry point and sets DE (address) and C (bank) appropriately.
+; Note it sets bank to 0 (ie. don't set any bank) if entry point is in ROM0.
+SetTaskNewEntryPoint: MACRO
+	ld DE, (\1)
+	ld C, BANK(\1)
+	ENDM
