@@ -215,7 +215,7 @@ jp _TestSuccess
 		return '\n'.join(lines)
 
 
-def process_file(top_level_dir, include_dir, tests_dir, filename):
+def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filename):
 	name, _ = os.path.splitext(filename)
 	filepath = os.path.join(tests_dir, filename)
 	config = dict(Memory=Memory, Test=Test, random=random.Random(name))
@@ -239,9 +239,12 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 			include_asm = f.read()
 
 	if link_files is None:
+		asm_files = os.listdir(top_level_dir)
+		for extra_link_dir in extra_link_dirs:
+			asm_files += [os.path.join(extra_link_dir, filename) for filename in os.listdir(extra_link_dir)]
 		link_files = [
 			os.path.splitext(asm_file)[0]
-			for asm_file in os.listdir(top_level_dir)
+			for asm_file in asm_files
 			if asm_file.endswith('.asm') and asm_file != 'header.asm'
 		]
 		if include_file in link_files:
@@ -268,12 +271,16 @@ def process_file(top_level_dir, include_dir, tests_dir, filename):
 		cmd(['rgbfix', '-v', '-p', 0, rom_path])
 
 
-def main(top_level_dir, include_dir='include/', tests_dir='tests'):
+def main(top_level_dir, include_dir='include/', tests_dir='tests', extra_link_dirs='tasks'):
 	include_dir = os.path.join(top_level_dir, include_dir)
 	tests_dir = os.path.join(top_level_dir, tests_dir)
+	extra_link_dirs = (
+		[os.path.join(top_level_dir, link_dir) for link_dir in extra_link_dirs.split(',')]
+		if extra_link_dirs else [] # because ''.split(',') == [''] when we want []
+	)
 	for filename in os.listdir(tests_dir):
 		if filename.endswith('.py'):
-			process_file(top_level_dir, include_dir, tests_dir, filename)
+			process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filename)
 
 
 if __name__ == '__main__':

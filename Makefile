@@ -3,7 +3,7 @@
 .SUFFIXES: .asm .o .gb
 .PHONY: bgb clean tests debug
 
-ASMS := $(wildcard *.asm)
+ASMS := $(wildcard *.asm) $(wildcard tasks/*.asm)
 OBJS := $(ASMS:.asm=.o)
 INCLUDES := $(wildcard include/*.asm)
 ASSETS := $(shell find assets/ -type f)
