@@ -306,7 +306,7 @@ T_GraphicsWriteTile::
 
 ; Writes a sprite to the sprite table and sets the flag for it to be drawn next frame.
 ; A = sprite index, B = X coord, C = Y coord, D = Tile number, E = flags.
-; Clobbers HL.
+; Clobbers A, HL.
 GraphicsWriteSprite::
 	rla
 	rla ; Shift A left twice, ie. A = 4 * A. Note the rotate is equiv to shift because A < 64.
@@ -336,7 +336,9 @@ GraphicsSetDirtySprites::
 
 
 T_GraphicsWriteSprite::
+	ld H, A ; DisableSwitch clobbers A
 	call T_DisableSwitch
+	ld A, H
 	call GraphicsWriteSprite
 	jp T_EnableSwitch
 

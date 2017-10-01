@@ -52,7 +52,7 @@ Start::
 
 	DisableSwitch
 
-	ld A, %10000001 ; background map on, everything else off
+	ld A, %10000011 ; background map on + sprites
 	ld [LCDControl], A
 
 	xor A
@@ -68,6 +68,9 @@ Start::
 	call TaskNewDynStack
 
 	SetTaskNewEntryPoint TaskPaintMain
+	call TaskNewDynStack
+
+	SetTaskNewEntryPoint TaskClockMain
 	call TaskNewDynStack
 
 	jp SchedLoadNext ; does not return
