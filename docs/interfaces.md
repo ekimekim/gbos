@@ -47,7 +47,7 @@ Remember to always re-enable switching, or else no other task will be able to ru
 Be aware that most task-callable OS functions will re-enable switching on exit, and are not
 safe to call inside a critical section.
 
-### Scheduling
+### Scheduling and Timing
 
 You can call `T_TaskYield` to stop your task and allow other tasks to run.
 Note that this is not needed in most cases - all tasks are switched between periodically,
@@ -60,6 +60,13 @@ using `T_SchedSleepTask`. If you would rather think in 'frames', 1 graphics fram
 Once put to sleep, the task will not run again until at least the given time has elapsed.
 
 If you wish to sleep for longer than 65535 ticks (64 seconds), it is reccomended you sleep in a loop.
+
+#### Getting system uptime
+
+You can call the `T_GetUptime` method to get ticks (2^-10s) since OS startup as a 32-bit integer.
+
+The system does not support staying up longer than 2^32-1 ticks, but since that's around 48 days
+and batteries only last one or two, this shouldn't ever be an issue in practice.
 
 ### Dynamic Memory Allocation
 

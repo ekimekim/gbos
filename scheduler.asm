@@ -362,3 +362,21 @@ CheckNextWake:
 	cp C ; set z if first byte of next item is $ff
 	jr nz, .sleeping_copy_loop ; loop unless we've found the terminator
 	ret
+
+
+; Task-callable way to get current system uptime.
+; Returned in BCDE. Clobbers A, HL.
+; Non-task system callers should not use this, in most cases they should hand-code something faster.
+T_GetUptime::
+	ld HL, Uptime
+	; We need to disable interrupts to get a consistent read
+	di
+	ld A, [HL+]
+	ld B, A
+	ld A, [HL+]
+	ld C, A
+	ld A, [HL+]
+	ld E, [HL]
+	ei
+	ld D, A
+	ret
