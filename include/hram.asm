@@ -30,6 +30,17 @@ JoyState rb 1
 ; 1 - Dirty (copy)
 DirtySprites rb 1
 
+
+; Detected GB hardware we're running on:
+; 0 - Original GB or SGB
+; 1 - GB Pocket or SGB2
+; 2 - Color GB
+; 3 - Gameboy Advance
+; 4 - Unknown (none of them matched - probably a leaky emulator)
+; The main difference you'll care about most of the time is if CGB functionality is available.
+; This is the case for 2 and 3, ie. check if bit 1 is set.
+HardwareVariant rb 1
+
 ; This is where the DMA wait routine will be copied in. This size must match that routine's size.
 ; The routine is not heavily size-optimised, and can be changed if we're short on HRAM.
 DMA_WAIT_SIZE EQU 10

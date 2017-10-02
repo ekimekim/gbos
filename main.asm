@@ -18,13 +18,45 @@ Section "Core Functions", ROM0
 
 ; Temporary code for testing task switching
 Start::
+
 	; Disable LCD and audio.
 	; Disabling LCD must be done in VBlank.
 	; On hardware start, we have about 10-20 cycles of vblank before the first frame begins.
-	; So this has to be first thing!
+	; So this has to be done quick!
+	; Note we save the A register to C before clearing it, as we need to save its initial value
+	; for GB hardware detection below.
+	ld C, A
 	xor A
 	ld [SoundControl], A
 	ld [LCDControl], A
+
+	; Initial state of A (stored in C) and B registers can be used to detect GB hardware variant
+	; ie. GB/CGB/GBA/SGB.
+	ld A, C
+	cp $11 ; A = $11 means CGB or GBA
+	jr nz, .notCGB
+	; To distinguish between CGB and GBA, we further check bit 0 of B
+	rrc B ; push lowest bit of B into carry flag
+	ld A, 2
+	jr nc, .setHardwareVariant ; leave A = 2 if CGB
+	inc A ; otherwise set A = 3
+	jr .setHardwareVariant
+.notCGB
+	cp $01 ; A = $01 means original GB or SGB
+	jr nz, .notOriginalOrSGB
+	xor A
+	jr .setHardwareVariant
+.notOriginalOrSGB
+	cp $ff ; A = $ff means Pocket GB or SGB2
+	jr nz, .notPGBorSGB2
+	ld A, 1
+	jr .setHardwareVariant
+.notPGBorSGB2
+	; if we've made it here, it means none of the known hardware indicators match.
+	; this probably means a badly-written emulator which initialized everything to random or zero.
+	ld A, 4
+.setHardwareVariant
+	ld [HardwareVariant], A
 
 	Debug "Debug messages enabled. Expression test: A = %A%"
 
