@@ -79,3 +79,23 @@ LongShiftR: MACRO
 	srl \1
 	rr \2
 	ENDM
+
+
+; Multiply 16-bit reg pair \1\2 by 8-bit immediate \3, adding result to reg pair \4\5.
+; The result pair MUST NOT be the same as the input pair.
+; Overflow is undefined - you must ensure your maximum value * \3 < 65536.
+; This is considerably fast because it's fully unrolled and hard-codes the multiplier,
+; so it can straight up omit any steps that aren't needed for that number.
+; Clobbers A, \1, \2
+MultiplyConst16: MACRO
+_N SET \3
+	REPT 8
+	IF _N & 1 > 0
+	LongAdd \4,\5, \1,\2, \4,\5
+	ENDC
+_N SET _N >> 1
+	IF _N > 0
+	LongShiftL \1,\2
+	ENDC
+	ENDR
+	ENDM
