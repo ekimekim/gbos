@@ -372,11 +372,11 @@ T_GetUptime::
 	; We need to disable interrupts to get a consistent read
 	di
 	ld A, [HL+]
-	ld B, A
+	ld E, A
 	ld A, [HL+]
-	ld C, A
-	ld A, [HL+]
-	ld E, [HL]
-	ei
 	ld D, A
+	ld A, [HL+]
+	ld B, [HL]
+	ei
+	ld C, A
 	ret
