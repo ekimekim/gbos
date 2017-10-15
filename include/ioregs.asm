@@ -159,8 +159,8 @@ DMATransfer EQU $ff46
 ; "BGP" Background and Window palette data
 TileGridPalette EQU $ff47
 ; "OBP0", "OBP1" Sprite data palettes
-SpritePaletteTransparent EQU $ff48
-SpritePaletteSolid EQU $ff49
+SpritePalette0 EQU $ff48
+SpritePalette1 EQU $ff49
 
 ; "WY", "WX" Window X and Y position.
 ; The window overwrites the background on the display, unlike sprites which are transparent.

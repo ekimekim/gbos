@@ -87,6 +87,12 @@ Start::
 	ld A, %10000011 ; background map on + sprites
 	ld [LCDControl], A
 
+	; Set default palettes mapping 0-3 -> 0-3
+	ld A, %11100100
+	ld [TileGridPalette], A
+	ld [SpritePalette0], A
+	ld [SpritePalette1], A
+
 	xor A
 	ld [TimerCounter], A ; Uptime timer starts from here
 	ld [InterruptFlags], A ; Reset pending interrupts now that we're properly set up
