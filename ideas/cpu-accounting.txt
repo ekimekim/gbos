@@ -1,0 +1,161 @@
+As the things the OS does (which steals time from tasks) and the variety of tasks grows,
+it's more nessecary to examine CPU usage of various tasks and OS activities.
+However, we want to keep overhead to a minimum.
+Goals:
+* Distingish between cpu usage by different OS activities (vblank, timekeeping, etc)
+* Account for how much time each task spent as the current task, minus any OS activities
+  that stole time during that timeframe.
+* This information should be reasonably accurate over a reasonable past period,
+  say, within 1% over the last 1s period.
+* Non-goal: accurate accounting over all history
+* Non-goal: always on, or with ability to view retroactive results immediately after turning on
+
+First high level thoughts:
+	We can save time at data collect time by writing timestamps to a queue.
+	A later process can process the queue into elapsed time for each item.
+
+	We can get away with short timestamps if we can guarentee the elapsed time between
+	any two timestamps is bounded. For example, if we guarentee the time between two timestamps
+	A and B is < 256, then we can unambiguously determine it even if A and B are only 1 byte each,
+	since we know that if B < A, A must have carried. More formally:
+		Let Ta and Tb be the true times that A and B occurred at, and Sa and Sb the timestamps.
+		If we write only the bottom byte of each as the timestamps, we have:
+			Sx = Tx % 256
+		Now consider the difference Sb - Sa:
+			Sb - Sa = Tb % 256 - Ta % 256 = (Tb - Ta) % 256
+		Noting that Tb - Ta is the true time difference dT, we have
+			Sb - Sa = dT + 256n for integer n
+			dT = Sb - Sa - 256n
+		If we know that 0 <= dT < 256, then there is only one permissible value of n,
+		thus letting us calculate dT.
+
+	As long as the timer interrupt is timely (if it isn't, our Uptime value is bad anyway)
+	and we are marking at least once every timer interrupt, we can guarentee marks are 511
+	units of 2^-18s apart. This makes things tricky - we could shift in a bit from
+	Uptime, but that may be slow.
+	Compare:
+		3 ld A, Uptime
+		1 rra ; put bottom bit into carry
+		3 ld A, TimerCounter
+		1 rra ; shift right A, and take top bit from carry
+	total 8, to:
+		3 ld A, TimerCounter
+	total 3.
+
+Optimization priorities:
+	1. Fast to not collect when not on
+	2. Fast to collect when on
+	3. Memory efficient collection data
+	4. Fast to process
+
+Thus the most important thing to consider is, how are we checking if we should collect at all?
+However, the tradeoff depends on how long it takes to collect. So let's consider that first.
+In below, N is number of bytes we write each step, and C is cost of finding and writing them
+once HL is set (we assume incrementing HL is free with use of ld [HL+], A)
+Option 1: Aligned array with index in hram:
+	Have an index in hram which gives current offset into 256-aligned array,
+	with a value of 0 indicating no collection.
+	Code:
+		3	ld A, [IndexAddr]
+		1	and A ; set z if 0
+		3 if taken else 2	jr z, .skip
+		2	ld H, ArrayAddr >> 8
+		1	ld L, A
+		max(N,2)	<inc A N times, or add N>
+		3	ld [IndexAddr], A
+		C	<get value(s)>
+	Cost: 12 + max(N,2) + C. For N=1,2,3 without C: 13, 14, 14. For skipped: 7
+Option 2: Aligned array with index in-line. Array max size 254 as index takes a slot.
+	eg. Array is from XX01 to XXff, index is at XX00.
+	Code:
+		3	ld HL, IndexAddr
+		1	xor A
+		2	cp [HL] ; set Z if [HL] is 0
+		3 if taken else 2	jr z, .skip
+		max(3*N,6)	<inc [HL] N times, or ld A, [HL]; add n; ld [HL], A>
+		3	ld L, [HL]
+		C	<get values(s)>
+	Cost: 11 + max(3*N,8) + C. For N=1,2,3 without C: 14, 17, 17. For skipped: 9
+	Note index points to prev value, not next value in this scheme.
+7 is pretty close (if not equal) to the optimal value for skipping. So option 1 seems fine.
+Note that since we always sample time at the same point in the accounting code, overheads should be
+roughly shared over all entities.
+
+If we have a 1-byte push, that 1 byte must be the timestamp. This means we don't know what we're
+counting, which is unworkable. So we need at least 2 bytes: a timestamp and an event data.
+Event data detailing a task switch needs the task id. With the current way task ids work we could
+attempt to encode things in the 'impossible' task ids that don't align with task size, but that
+seems very fragile. Instead, let's have a variable-length encoding as follows:
+	timestamp type [16-bit param]
+where param is optional depending on type.
+Recognizing that no param is faster than param, we have types:
+	TIMER: time at which timer interrupt ran. Overhead is too high to record before/after...
+
+
+...hold up. This thing is going to, like, double timer interrupt length when active,
+and increase it by 25% (30->37) otherwise. and even then, you'd need to do it twice to actually capture
+the timer interrupt time, which at that point would be majority overhead!
+I think we need to make accounting for timer interrupt steal a non-goal.
+This makes performance slightly less critical, but still important. But notably, it means our
+time guarentee between timestamps is much larger.
+Let's do 16-bit timestamps of (Uptime % 256, TimerCounter). This gives us 2^-2 = 250ms max time
+between timestamps. Since we switch on an 8ms time slice, this should never happen unless something
+is badly abusing the no-switch counter, AND not writing anything to the screen (so vblank is disabled).
+This is outside our purview since it implies a really bad bug or badly behaved task.
+
+So, to rethink. Let's keep the 256-aligned-array, but fix entries to 4 bytes. This is nice because
+it avoids problems with knowing when you've wrapped. In fact, we can just let it wrap! Maybe set it
+'off' using an odd value instead of 0, since those are always illegal indexes.
+
+So now the format is:
+	ts upper, ts lower, type, param
+where type and param are 1 byte.
+Valid types:
+	VBLANK BEGIN/END - no param. marks beginning/end of vblank handler
+	SWITCH TO IDLE - no param. marks when a task is switched out from, but nothing else is runnable
+	SWITCH IN - param task id. marks when a task is switched in, and the given task id starts running
+		note this covers both an immediate switch out/switch in, and a switch from idle to a task.
+We can then calculate the times:
+	from switch in of T to switch out: accounted to T, minus any steal time in that duration
+	from vblank begin to vblank end: accounted as vblank steal time
+	from switch out to switch in: accounted as scheduler/idle time.
+		note this includes both scheduler overhead, and any time spent waiting for any task to be runnable.
+		scheduler overhead is likely too small to bother trying to seperate the two.
+In pseudocode, processing would look like:
+	(first turn off if active, to prevent races)
+	for timestamp, type, param in queue, starting at index and stopping when you hit index again:
+		first loop:
+			current time = timestamp
+			current mode = switch type:
+				vblank begin: vblank
+				switch in: normal, and set task id = param
+				switch out: idle
+				vblank end: normal
+			continue
+		elapsed = (timestamp - current time) % 2^16
+		current time = timestamp
+		switch current mode:
+			normal: add elapsed to current task id if any
+			idle: add elapsed to idle total
+			vblank: add elapsed to vblank total
+		current mode = switch type:
+			same as above in first loop
+Keeping totals may get tricky - maybe down-shift elapsed by 4 bits to fit up to 2s,
+which could easily be reached by idle time if nothing is running.
+We should simply stop processing if anything hits that limit.
+
+Under normal circumstances you'll be getting around 6 entries every 8ms, 
+(vblank begin, vblank end, switch out, switch in, switch out, switch in)
+thought aborted, this is too many. can we cut down? not for vblank but maybe for switch?
+if there's no idle, we can call scheduler overhead negligible and omit it, just do
+SWITCH IN, SWITCH IN. Only do SWITCH TO IDLE if we have nothing runnable.
+This gives us only 4 in most cases. So 256b will last 256b/16b * 8ms = 128ms.
+
+Not great, but ok. We could trade off time for memory by omitting bottom 4 bits of TimerCounter
+(for a granularity of 2^-14s = 256 cycles) then put type in those 4 bits, and go back to a variable
+length encoding, with only SWTICH INs taking 3 bytes. This means we'd outright need a seperate
+flag for whether accounting is on, since all values of index will be valid.
+	Note: there's a problem here. We wouldn't know the correct start index, unless we worked backwards.
+	Which is doable but annoying.
+This would give us (vblank in, vblank out, switch, switch) = 2+2+3+3 = 10 bytes per 8ms.
+256b/10b * 8ms = 200ms. Kinda a marginal gain for a lot of extra complexity.

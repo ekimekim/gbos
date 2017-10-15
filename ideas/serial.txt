@@ -1,0 +1,91 @@
+just to mention the obvious: the interface to the rest of the system should be
+two ring queues, one for tx and one for rx. The hard part is in the actual business end.
+
+
+how serial works:
+in a given transfer of 1B, there is an active side (aka master, aka internal clock)
+and a passive side (aka slave, aka external clock)
+the active side initiates the transfer by writing 0x81 (or 0x83 for fast mode) to ff02
+the passive side better hope it has something ready.
+active side left rotates the 8 bits between the ff01 register on both machines
+at speeds in _active side_ cycles of either:
+	normal: 2^-13s (128 cycles, 2^-14s in CGB double-speed mode)
+	fast (CGB active side only): 2^-18s (4 cycles, 2^-19s in CGB double-speed mode)
+the passive side rotates the 8 bits at the same time the active side does.
+a normal GB can be a passive side with cycle speeds up to 500kHz (between 2^-18/2^-19s),
+and maybe more?
+
+At the end of the transfer, both sides generate a Serial interrupt.
+For passive side, this could be first indication a transfer was initiated.
+
+Errata:
+	Passive side _may_ set ff02=0x80 at any time. it will be reset to 0 when
+		a transfer completes.
+	if link cable not connected, FFs are rotated into active side
+	if transfer is interrupted (eg. pulled cable), passive side will wait forever,
+		I believe active side will read 1s for remaining bits
+
+note that if the passive side doesn't read the received value / write a new one fast enough,
+it will get transferred back again!
+This means that unless we're being super careful about how long we ever disable serial interrupt
+on the passive end, we can't safely send a second byte ever.
+The suggested solution in the pandocs is to alternate active/passive sides, ie.
+1. side A initiates transfer of A0 with B0,
+2. side A waits for completion, then reads B0/writes A1
+3. side B gets interrupt, reads A0/writes B1, waits briefly, then initiates transfer of B1 with A1
+etc
+Note you'd need to disable all ints during 2, since side B won't wait very long for side A to
+finish reading/writing. This is probably fine in fast mode where full transfer is 32 cycles,
+but not for non-CGB normal mode where full transfer is 1024 cycles!
+
+An alternate approach: encode a sequence number or identifying flag so we know if the other
+side missed their window to read the data/write new. This relies on the idea that missing
+your window is possible but rare - eg. a race condition. The main case i'm thinking of being
+that you're in the middle of a DI or other interrupt handler at the time.
+
+ok, so features we need:
+* passive side needs to be able to respond to a transfer at any time
+* both sides need to be able to recover from a partial transfer
+* both sides need to be able to process transferred value before continuing,
+	OR both sides need to be able to recognize and recover from a missed processing window
+	of the other side.
+
+
+all thoughts from here incomplete.
+
+
+Option 1: Don't even worry about it
+* Don't consider partial transfers of a byte - this means they'll likely cause corrupted data:
+	- On active end: For rx until connection is re-established
+	- On passive end: For all future tx communicatons with anyone until OS reset,
+	  since it'll be off by some number of bits and never re-sync.
+* Go slow enough that you can practically guarentee you'll make your processing window,
+  eg. wait 2ms between sends.
+* Consider it user error to disconnect cable when stuff is being transferred
+
+
+Option 2: Per-byte metadata
+Add some leading bits to each byte and send less bits in each byte.
+	2a: Origin bit: Send 7-bit values prefixed with 0 or 1 depending on active/passive side.
+		This lets the active side know if the passive side missed their processing window,
+		since the first bit received will be wrong.
+		Doesn't address partial transfer issues.
+	2b: Trailing 0: In addition or otherwise to above, always end with a 0 bit.
+		Since a partial transfer will always end in a 1 bit, receiving a 0 bit means the transfer
+		was complete. We're assuming you won't disconnect and then reconnect within a single transfer
+		on the active side. This won't help guard against partial transfer on passive side.
+
+
+Option 2: Long packets
+We define a packet format, ie. a sequence of bytes. This gives us ample room for start sequences
+and known lengths so we can identify a partial transmission and record it as failed,
+and requeue the whole thing. We may still need to add per-byte metadata to catch missed processing
+windows. TO flesh out.
+
+
+TODO: what happens if we're halfway through a passive transfer and we start an active?
+if this resets the transfer counter (ie. so we get an interrupt after 8 cycles of our active
+transfer), this could be a good way to reset to a known state after detecting a partial passive transfer.
+However i suspect this would still count the 8 out, interrupt halfway through then keep going,
+so the answer is this state is unrecoverable except by power reset.
+Punt on handling it then?
