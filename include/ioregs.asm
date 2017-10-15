@@ -10,11 +10,16 @@ JoySelectDPad EQU $20
 JoySelectButtons EQU $10
 
 ; "SB" Serial transfer data
+; Once a transfer is initiated (either by writing to SerialControl or by the other device)
+; the contents of this register get rotated out and transmitted, and the receiving bits rotated in, leftwise,
+; one bit per cycle.
 SerialData EQU $ff01
 ; "SC" Serial control
+; Write bits 7 and 0 to initiate a transfer. Add bit 1 to use fast cycles (CGB only).
+; Write bit 7 and it will stay set until a transfer initiated by the other device completes.
 SerialControl EQU $ff02
 
-; "DIV" fixed timer register. Incremented every ~610us (2^14 Hz)
+; "DIV" fixed timer register. Incremented every ~610us (2^14 Hz, 64 cycles)
 ; Write any value to set it to 0
 DivTimer EQU $ff04
 
@@ -29,7 +34,7 @@ TimerModulo EQU $ff06
 ; "TAC" Timer control register. Set this to control the timer.
 ; Bits 3-7 are unused. Bit 2 enables the timer when set, disables it when unset.
 ; Bits 0-1 are a 2-bit number where the values 0-3 mean timer frequencies
-; 2^12 Hz, 2^18 Hz, 2^16 Hz and 2^14 Hz respectively.
+; 2^12 Hz (256 cycles), 2^18 Hz (4 cycles), 2^16 Hz (16 cycles) and 2^14 Hz (64 cycles) respectively.
 TimerControl EQU $ff07
 
 TimerEnable EQU 1 << 2
@@ -41,6 +46,7 @@ TimerFreq14 EQU 3
 ; "IF" Interrupt flag register. The hardware will set a bit in this register when an interrupt
 ; would be generated, even if interrupts are currently disabled. Bits respectively (from 0 to 5) refer to
 ; VBlank, LCDC, Timer, Serial and Joystick interrupts.
+; May also be set manually to cancel a pending interrupt or manually fire one.
 InterruptFlags EQU $ff0f
 
 ; $ff10 - $ff3f are sound registers:
@@ -157,6 +163,9 @@ LCDYCompare EQU $ff45
 DMATransfer EQU $ff46
 
 ; "BGP" Background and Window palette data
+; All palette regs are monochrome mode only (not CGB) and map values 0-3 in pixel data
+; to colors 0-3 from light to dark. Lowest 2 bits are for value 0, next 2 bits for value 1, etc.
+; eg. to map 0-3 -> 0-3, use %11100100. To invert colors, use %00011011.
 TileGridPalette EQU $ff47
 ; "OBP0", "OBP1" Sprite data palettes
 SpritePalette0 EQU $ff48
