@@ -39,7 +39,11 @@ IntLCDC::
 section "Timer Interrupt handler", ROM0 [$50]
 ; A configurable amount of time has passed
 IntTimer::
-	jp TimerHandler ; This could be a jr instruction (faster), but the assembler isn't smart enough
+	; This is a jr instruction for speed, but the assembler isn't smart enough to allow it.
+	; So, given the hard-coded assuption that TimerHandler is at $68, we hand-code a instruction.
+	; $68 - $50 = $18, so we encode "jr $18".
+	; Opcode is $18 nn where nn is signed byte (jump distance - 2), so we encode $18 $16.
+	db $18, $16 ; jr $18 = jr TimerHandler
 section "Serial Interrupt handler", ROM0 [$58]
 ; Serial transfer is complete
 IntSerial::
@@ -52,6 +56,7 @@ IntJoypad::
 ; Since jr is faster than jp but short-range, this code must be close to int handlers.
 section "Extended handler code", ROM0 [$68]
 
+; TimerHandler MUST be at $68, or you need to change the jr instruction at IntTimer
 TimerHandler::
 	; our purpose here is to make it as fast as possible for the far-most-common case
 	; where we only increment the least signifigant byte
