@@ -1,0 +1,13 @@
+Goal:
+	A general-purpose mechanism for one or more tasks to be put to sleep
+	until another task (or OS activity) triggers a wake of associated sleeping tasks.
+This low-level syncronization primitive allows all manner of condition waiting,
+without needing to resort to busy looping.
+Examples:
+	Waiting on long-lived (multiple time slices) exclusive locks to become available
+	Waiting for a full queue (including OS-managed queues like graphics tile queue) to be non-full
+	Waiting for an empty queue to be non-empty
+And therefore solves the following current problems that we're currently busy-looping on:
+	Waiting for a full graphics queue to have room to write new tiles
+	Waiting for a button to be pressed
+
