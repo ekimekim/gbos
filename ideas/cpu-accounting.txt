@@ -159,3 +159,21 @@ flag for whether accounting is on, since all values of index will be valid.
 	Which is doable but annoying.
 This would give us (vblank in, vblank out, switch, switch) = 2+2+3+3 = 10 bytes per 8ms.
 256b/10b * 8ms = 200ms. Kinda a marginal gain for a lot of extra complexity.
+
+New plan: back to 8-bit timestamps, but 2^-14s granularity.
+Bonus: this is the div register rate. makes it easy!
+Then max time between timestamps is 2^-6s = 16ms.
+This is getting a bit chancey but it is two entire task periods...
+If a task is holding the no-switch lock for that long something's up.
+So, new format:
+	type timestamp
+	OR
+	type timestamp magic taskid
+where magic is a value which corresponds to a 'ignore this' type.
+the idea is we can accidentially interpret the second half of the second format
+as the first format, and it will still work.
+So then types are:
+	IGNORED / VBLANK OUT
+	VBLANK IN
+	SWITCH IN with taskid
+	SWITCH TO IDLE
