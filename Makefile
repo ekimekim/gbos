@@ -5,34 +5,50 @@
 
 ASMS := $(wildcard *.asm) $(wildcard tasks/*.asm)
 OBJS := $(ASMS:.asm=.o)
+DEBUGOBJS := $(addprefix build/debug/,$(OBJS))
+RELEASEOBJS := $(addprefix build/release/,$(OBJS))
 INCLUDES := $(wildcard include/*.asm)
 ASSETS := $(shell find assets/ -type f)
 TESTS := $(wildcard tests/*.py)
 
-all: rom.gb tests/.uptodate
+all: build/release/rom.gb tests/.uptodate
 
 include/assets/.uptodate: $(ASSETS) tools/assets_to_asm.py
 	python tools/assets_to_asm.py assets/ include/assets/
 	touch $@
 
-tests/.uptodate: $(TESTS) tools/unit_test_gen.py $(OBJS)
+tests/.uptodate: $(TESTS) tools/unit_test_gen.py $(DEBUGOBJS)
 	python tools/unit_test_gen.py .
 	touch "$@"
 
 tests: tests/.uptodate
 
-%.o: %.asm $(INCLUDES) include/assets/.uptodate
-	rgbasm -i include/ -v -o $@ $<
+build/debug/%.o: %.asm $(INCLUDES) include/assets/.uptodate build/debug build/debug/tasks
+	rgbasm -DDEBUG=1 -i include/ -v -o $@ $<
 
-rom.gb: $(OBJS)
-	rgblink -n rom.sym -o $@ $^
+build/release/%.o: %.asm $(INCLUDES) include/assets/.uptodate build/release build/release/tasks
+	rgbasm -DDEBUG=0 -i include/ -v -o $@ $<
+
+build/debug/rom.gb: $(DEBUGOBJS)
+# note padding with c7 = 'RST 00'
+	rgblink -n $(@:.gb=.sym) -o $@ -p 0xC7 $^
+	rgbfix -v -p 0xC7 $@
+
+build/release/rom.gb: $(RELEASEOBJS)
+	rgblink -n $(@:.gb=.sym) -o $@ $^
 	rgbfix -v -p 0 $@
 
-bgb: rom.gb
+build/debug build/release:
+	mkdir -p $@
+
+build/%/tasks:
+	mkdir $@
+
+debug: build/debug/rom.gb
+	bgb $<
+
+bgb: build/release/rom.gb
 	bgb $<
 
 clean:
-	rm -f *.o *.sym rom.gb include/assets/.uptodate include/assets/*.asm tests/*/*.{asm,o,sym,gb}
-
-debug:
-	./debug
+	rm -f build/*/*.o build/*/rom.sym build/*/rom.gb rom.gb include/assets/.uptodate include/assets/*.asm tests/*/*.{asm,o,sym,gb}

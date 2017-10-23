@@ -215,7 +215,7 @@ jp _TestSuccess
 		return '\n'.join(lines)
 
 
-def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filename):
+def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, objs_dir, filename):
 	name, _ = os.path.splitext(filename)
 	filepath = os.path.join(tests_dir, filename)
 	config = dict(Memory=Memory, Test=Test, random=random.Random(name))
@@ -249,6 +249,7 @@ def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filenam
 		]
 		if include_file in link_files:
 			link_files.remove(include_file)
+		link_files = [os.path.join(objs_dir, link_file) for link_file in link_files]
 
 	link_paths = [os.path.join(top_level_dir, '{}.o'.format(link_file)) for link_file in link_files]
 
@@ -271,7 +272,7 @@ def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filenam
 		cmd(['rgbfix', '-v', '-p', 0, rom_path])
 
 
-def main(top_level_dir, include_dir='include/', tests_dir='tests', extra_link_dirs='tasks'):
+def main(top_level_dir, include_dir='include/', tests_dir='tests', extra_link_dirs='tasks', objs_dir='build/debug'):
 	include_dir = os.path.join(top_level_dir, include_dir)
 	tests_dir = os.path.join(top_level_dir, tests_dir)
 	extra_link_dirs = (
@@ -280,7 +281,7 @@ def main(top_level_dir, include_dir='include/', tests_dir='tests', extra_link_di
 	)
 	for filename in os.listdir(tests_dir):
 		if filename.endswith('.py'):
-			process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, filename)
+			process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, objs_dir, filename)
 
 
 if __name__ == '__main__':
