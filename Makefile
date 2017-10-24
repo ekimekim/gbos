@@ -1,7 +1,7 @@
 
 # avoid implicit rules for clarity
 .SUFFIXES: .asm .o .gb
-.PHONY: bgb clean tests debug
+.PHONY: bgb clean tests testroms debug
 
 ASMS := $(wildcard *.asm) $(wildcard tasks/*.asm)
 OBJS := $(ASMS:.asm=.o)
@@ -21,7 +21,10 @@ tests/.uptodate: $(TESTS) tools/unit_test_gen.py $(DEBUGOBJS)
 	python tools/unit_test_gen.py .
 	touch "$@"
 
-tests: tests/.uptodate
+testroms: tests/.uptodate
+
+tests: testroms
+	./runtests
 
 build/debug/%.o: %.asm $(INCLUDES) include/assets/.uptodate build/debug build/debug/tasks
 	rgbasm -DDEBUG=1 -i include/ -v -o $@ $<

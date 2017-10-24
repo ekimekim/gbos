@@ -1,0 +1,39 @@
+#!/bin/bash
+
+USAGE="
+$0 {test rom}
+For each test rom, or all under tests/ if omitted, run the test in headless mode
+and output results. Will exit success only if all listed tests pass.
+"
+
+BGB_DEBUGMSG_PATH="$HOME/Downloads/bgb-1.5.4/debugmsg.txt"
+SUCCESS_TOKEN="=== Success ==="
+
+runtest() {
+	echo "Running test rom: $1"
+	rm -f "$BGB_DEBUGMSG_PATH"
+	bgb -hf "$1"
+	if ! [ -f "$BGB_DEBUGMSG_PATH" ]; then
+		echo "Test rom failed to start, or did not emit any messages"
+		return 1
+	fi
+	cat "$BGB_DEBUGMSG_PATH" | grep -vF "$SUCCESS_TOKEN"
+	grep -qF "$SUCCESS_TOKEN" "$BGB_DEBUGMSG_PATH" # sets exit status
+}
+
+if [ "$#" -gt 0 ]; then
+	roms=("$@")
+else
+	roms=()
+	# Note the process substitution is needed here (instead of a pipeline)
+	# or else the while body will execute in a subshell and roms will be unchanged.
+	while read line; do
+		roms+=("$line")
+	done < <(find tests/ -name '*.gb')
+fi
+
+code=0
+for rom in "${roms[@]}"; do
+	runtest "$rom" || code=1
+done
+exit "$code"
