@@ -1,7 +1,7 @@
 
 ; Debug macro works in certain emulators to print a debug message \1.
 ; Currently supported: bgb only.
-; Does nothing unless DEBUG_ENABLED flag is set to 1 in debug_enabled.asm
+; Does nothing unless DEBUG flag is set to 1
 Debug: MACRO
 IF DEBUG > 0
 	ld d, d
@@ -19,6 +19,24 @@ DebugIfNot: MACRO
 IF DEBUG > 0
 	jr \1, .notmet\@
 	Debug \2
+.notmet\@
+ENDC
+ENDM
+
+; Breakpoint macro works in certain emulators to break into debugger when run.
+; Currently supported: bgb only.
+; Does nothing unless DEBUG flag is set to 1
+Breakpoint: MACRO
+IF DEBUG > 0
+	ld b, b
+ENDC
+ENDM
+
+; As Breakpoint, but breaks only if condition \1 (same as jp instructions) is NOT met
+BreakpointIfNot: MACRO
+IF DEBUG > 0
+	jr \1, .notmet\@
+	Breakpoint
 .notmet\@
 ENDC
 ENDM
