@@ -28,6 +28,8 @@ else
 	# Note the process substitution is needed here (instead of a pipeline)
 	# or else the while body will execute in a subshell and roms will be unchanged.
 	while read line; do
+		# special case: meta_test/2_this_fails is meant to fail and should be excluded
+		[ "$line" == "tests/meta_test/2_this_fails.gb" ] && continue
 		roms+=("$line")
 	done < <(find tests/ -name '*.gb')
 fi
