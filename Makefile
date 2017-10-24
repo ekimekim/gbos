@@ -30,9 +30,9 @@ build/release/%.o: %.asm $(INCLUDES) include/assets/.uptodate build/release buil
 	rgbasm -DDEBUG=0 -i include/ -v -o $@ $<
 
 build/debug/rom.gb: $(DEBUGOBJS)
-# note padding with c7 = 'RST 00'
-	rgblink -n $(@:.gb=.sym) -o $@ -p 0xC7 $^
-	rgbfix -v -p 0xC7 $@
+# note padding with 0x40 = ld b, b = BGB breakpoint
+	rgblink -n $(@:.gb=.sym) -o $@ -p 0x40 $^
+	rgbfix -v -p 0x40 $@
 
 build/release/rom.gb: $(RELEASEOBJS)
 	rgblink -n $(@:.gb=.sym) -o $@ $^
