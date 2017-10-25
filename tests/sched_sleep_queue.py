@@ -35,7 +35,7 @@ RunList = Memory(0, 0)
 read_empty = Test('CheckNextWake',
 	in_NextWake = Memory(255),
 	out_NextWake = Memory(255),
-	out_RunList = Memory(0, 0, 0),
+	out_RunList = Memory(0, 0),
 )
 
 read_not_ready = Test('CheckNextWake',
@@ -44,7 +44,7 @@ read_not_ready = Test('CheckNextWake',
 	in_Uptime = uptime(0xf8),
 	out_NextWake = Memory(10),
 	out_NextWakeTime = uptime(0x100),
-	out_RunList = Memory(0, 0, 0),
+	out_RunList = Memory(0, 0),
 )
 
 read_one = Test('CheckNextWake',
@@ -53,7 +53,7 @@ read_one = Test('CheckNextWake',
 	in_Uptime = uptime(0x100),
 	in_SleepingTasks = sleep_queue(0xff, []),
 	out_NextWake = Memory(255),
-	out_RunList = Memory(0, 1, 10),
+	out_RunList = Memory(1, 0, 10),
 )
 
 read_many = Test('CheckNextWake',
@@ -62,7 +62,7 @@ read_many = Test('CheckNextWake',
 	in_Uptime = uptime(0x101),
 	in_SleepingTasks = sleep_queue(0xf0, [(20, 0xf8), (4, 0xffff)]),
 	out_NextWake = Memory(20),
-	out_RunList = Memory(0, 1, 10),
+	out_RunList = Memory(1, 0, 10),
 	out_NextWakeTime = uptime(0xf8),
 	out_SleepingTasks = sleep_queue(0xf8, [(4, 0xffff)]),
 )
