@@ -302,9 +302,10 @@ def process_file(top_level_dir, include_dir, tests_dir, extra_link_dirs, objs_di
 		rom_path = '{}.gb'.format(path)
 		with open(asm_path, 'w') as f:
 			f.write(asm)
-		cmd(['rgbasm', '-i', include_dir, '-v', '-o', obj_path, asm_path])
-		cmd(['rgblink', '-n', sym_path, '-o', rom_path, obj_path] + link_paths)
-		cmd(['rgbfix', '-v', '-p', 0, rom_path])
+		# We pad wth 0x40 = ld b, b = BGB breakpoint
+		cmd(['rgbasm', '-DDEBUG', '-i', include_dir, '-v', '-o', obj_path, asm_path])
+		cmd(['rgblink', '-n', sym_path, '-o', rom_path, '-p', '0x40', obj_path] + link_paths)
+		cmd(['rgbfix', '-v', '-p', '0x40', rom_path])
 
 
 def main(top_level_dir, include_dir='include/', tests_dir='tests', extra_link_dirs='tasks', objs_dir='build/debug'):
