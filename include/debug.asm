@@ -6,9 +6,8 @@ Debug: MACRO
 IF DEBUG > 0
 	ld d, d
 	jr .end\@
-	dw $6464
-	dw $0000
-	db \1
+	dw $6464, $0000
+	db strcat(__FILE__, strcat("@%TOTALCLKS%: ", \1))
 .end\@
 ENDC
 ENDM
