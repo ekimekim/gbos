@@ -346,7 +346,7 @@ CheckNextWake:
 
 	; copy everything in SleepingTasks forward
 	; Note that currently DE = SleepingTasks + sleep_delta + 1
-	RepointStruct DE, SLEEP_SIZE, sleep_delta + 1 ; DE = &(SleepingTasks[1])
+	RepointStruct DE, sleep_delta + 1, SLEEP_SIZE ; DE = &(SleepingTasks[1])
 	ld HL, SleepingTasks
 	ld C, $ff
 	; We read from DE and write to HL, checking for terminator every SLEEP_SIZE bytes
