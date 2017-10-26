@@ -31,7 +31,7 @@ else
 		# special case: meta_test/2_this_fails is meant to fail and should be excluded
 		[ "$line" == "tests/meta_test/2_this_fails.gb" ] && continue
 		roms+=("$line")
-	done < <(find tests/ -name '*.gb')
+	done < <(find tests/ -name '*.gb' | sort)
 fi
 
 code=0
