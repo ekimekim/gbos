@@ -73,7 +73,9 @@ SchedLoadNext::
 ; Put task in B to sleep for DE time units.
 ; More properly, this enqueues it to be made runnable after that time.
 ; It does not remove it from the pending run list if already present.
+; Clobbers all.
 SchedEnqueueSleepTask::
+	Debug "Putting task %B% to sleep for %DE%"
 	; First, we calculate our target wake time by adding current time
 	; We need to disable timer interrupt for the duration so we can get a consistent read.
 	; HLDE = Uptime + DE
@@ -263,26 +265,14 @@ SchedEnqueueSleepTask::
 
 	ret
 
-; Task-callable version of SchedSleepTask.
 ; Put current task to sleep for DE time units of 2^-10 sec (~1ms).
-; Clobbers A.
+; Clobbers all.
 T_SchedSleepTask::
 	DisableSwitch
-	; fallthrough
-; For use by core code to put current task to sleep for DE time units.
-SchedSleepTask::
-	; We need to retrieve DE after TaskSave, save it to the top of CoreStack
-	ld A, D
-	ld [CoreStack - 1], A
-	ld A, E
-	ld [CoreStack - 2], A
-	call TaskSave
-	; pop the saved DE back off the stack
-	add SP, -2
-	pop DE
 	ld A, [CurrentTask]
 	ld B, A
 	call SchedEnqueueSleepTask
+	call TaskSave
 	jp SchedLoadNext ; does not return
 
 
@@ -319,6 +309,7 @@ CheckNextWake:
 	; or the wake time has passed, so let's wake.
 .wake
 	ei ; might cause a double-ei if falling through from last comparison above, but doesn't matter and is faster
+	Debug "Waking task %B% from sleep"
 	call SchedAddTask ; enqueue NextWake to be scheduled (since it's still in B)
 
 	; Now the hard part: new values for nextwake and friends
