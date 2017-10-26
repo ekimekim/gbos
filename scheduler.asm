@@ -311,7 +311,8 @@ CheckNextWake:
 	cp [HL]
 	ret c
 
-	; If we reached here, they're exactly equal, which counts as time to wake.
+	; If we reached here, either they're exactly equal, which counts as time to wake,
+	; or the wake time has passed, so let's wake.
 .wake
 	ei ; might cause a double-ei if falling through from last comparison above, but doesn't matter and is faster
 	call SchedAddTask ; enqueue NextWake to be scheduled (since it's still in B)
