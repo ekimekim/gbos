@@ -1,6 +1,7 @@
 include "ring.asm"
 include "task.asm"
 include "hram.asm"
+include "debug.asm"
 
 
 SECTION "Scheduler RAM", WRAM0
@@ -45,6 +46,7 @@ SchedInit::
 ; Enqueue a task with task id in B to be scheduled
 ; Clobbers A, H, L.
 SchedAddTask::
+	Debug "Enqueue task %B% to run"
 	RingPushNoCheck RunList, RUN_LIST_SIZE, B
 	ret
 
@@ -58,10 +60,12 @@ SchedLoadNext::
 	call CheckNextWake
 	RingPop RunList, RUN_LIST_SIZE, B
 	jr nz, .found
+	Debug "Nothing runnable"
 	halt
 	jr .loop
 
 .found
+	Debug "Running task %B%"
 	ld A, B
 	jp TaskLoad ; does not return
 
