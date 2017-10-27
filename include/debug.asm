@@ -1,23 +1,28 @@
 
+
+
 ; Debug macro works in certain emulators to print a debug message \1.
 ; Currently supported: bgb only.
 ; Does nothing unless DEBUG flag is set to 1
-Debug: MACRO
+Debug EQUS "_Debug \{__LINE__\}, "
+; _Debug takes __LINE__ as first arg as a workaround. Use Debug instead.
+_Debug: MACRO
 IF DEBUG > 0
 	ld d, d
 	jr .end\@
 	dw $6464, $0000
-	db strcat(__FILE__, strcat("@%TOTALCLKS%: ", \1))
+	db strcat(__FILE__, strcat(":\1@%TOTALCLKS%: ", \2))
 .end\@
 ENDC
 ENDM
 
 ; As Debug, but prints \2 only if condition \1 (condition same as jp instructions) is NOT met.
 ; eg. DebugIfNot nz, "foo" prints "foo" if z is set.
-DebugIfNot: MACRO
+DebugIfNot EQUS "_DebugIfNot \{__LINE__\}, "
+_DebugIfNot: MACRO
 IF DEBUG > 0
-	jr \1, .notmet\@
-	Debug \2
+	jr \2, .notmet\@
+	_Debug \1, \3
 .notmet\@
 ENDC
 ENDM
