@@ -11,3 +11,24 @@ And therefore solves the following current problems that we're currently busy-lo
 	Waiting for a full graphics queue to have room to write new tiles
 	Waiting for a button to be pressed
 
+Design:
+	Needs to be able to hold multiple task ids to wake
+	However most common case will probably only be one task id
+	Given this is something we need to wait for a while for, taking a fair chunk of CPU time should be ok.
+	Option A: single task or malloc'd array
+		3 forms:
+			0, junk
+			1, TASK_ID
+			pointer to array
+		Note the array address will never be in 0000-01ff (that's ROM, array is RAM) so 0,1 as magic values is safe.
+		A leading 0 indicates no waiters, a leading 1 indicates a single waiter, specified as next byte, and anything else
+		indicates it is a pointer to a ff-terminated array of task ids.
+		Note allocated memory would need to always be MAX_TASKS long to avoid needing to realloc if we grow.
+		Note we'd need to loop over all waiters everywhere (error-prone?) in order to remove dead task ids.
+	Option B: Central list
+		We observe that a task will only ever be waiting on at most one waiter.
+		We keep a global list mapping task ids to waiter "IDs", either literally as a list of (task, waiter id)
+		or by making current waiter an element of task.
+		This makes invalidating dead tasks easy, but makes management harder since waiter ids now need to be allocated,
+		and just in general makes them a special case.
+		We could partially get around this by making the ids (bank, addr) though you need to be careful about WRAM0 vs WRAMX vs SRAMX.

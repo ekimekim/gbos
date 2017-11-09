@@ -177,3 +177,6 @@ So then types are:
 	VBLANK IN
 	SWITCH IN with taskid
 	SWITCH TO IDLE
+If we assume a typical workload of every ~16ms being VBLANK IN, VBLANK OUT, SWITCH IN, SWITCH IN, then in 16ms we fill 10b, 256b/10b * 16ms ~= 400ms,
+which should be good enough.
+A 16-bit total at 2^-14s units gives us 2^2 = 4s total time, which will probably never be reachable.
