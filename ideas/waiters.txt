@@ -32,3 +32,6 @@ Design:
 		This makes invalidating dead tasks easy, but makes management harder since waiter ids now need to be allocated,
 		and just in general makes them a special case.
 		We could partially get around this by making the ids (bank, addr) though you need to be careful about WRAM0 vs WRAMX vs SRAMX.
+
+Going with option A for now as is most straightforward,
+and we can punt on the dead task cleanup until later.

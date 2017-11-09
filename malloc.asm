@@ -55,7 +55,7 @@ DynMemInit::
 
 ; Find and allocate a memory chunk of B length (that's B usable data, max 254)
 ; from DynMem range starting at HL. Returns newly allocated memory in HL, or $0000 on failure.
-; Allocation is registered to task with task id D.
+; Allocation is registered to task with task id D, or $fe for OS-related allocations.
 ; Clobbers all but DE.
 DynMemAlloc::
 	; Simple allocation algorithm - first fit.
