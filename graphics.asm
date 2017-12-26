@@ -32,7 +32,7 @@ TileQueueInfo:
 	ds 2 * 4
 
 
-SECTION "Graphics system aligned RAM", WRAMX[$d000]
+SECTION "Graphics system aligned RAM", WRAM0, ALIGN[8]
 
 ; An array of 4 tile queues, each 256 bytes long.
 ; Each queue is 128 entries of 2 bytes (addr, value), where addr is the lower byte of
