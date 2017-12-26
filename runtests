@@ -6,7 +6,7 @@ For each test rom, or all under tests/ if omitted, run the test in headless mode
 and output results. Will exit success only if all listed tests pass.
 "
 
-BGB_DEBUGMSG_PATH="$HOME/Downloads/bgb-1.5.4/debugmsg.txt"
+BGB_DEBUGMSG_PATH="$HOME/Downloads/bgb/debugmsg.txt"
 SUCCESS_TOKEN="=== Success ==="
 
 runtest() {
