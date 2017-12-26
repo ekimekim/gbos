@@ -167,7 +167,7 @@ TaskSave::
 	; Return to saved address
 	ld H, D
 	ld L, E ; HL = return address
-	jp [HL]
+	jp HL
 
 
 ; Load task state and return into the task.
