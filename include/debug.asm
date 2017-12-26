@@ -44,3 +44,13 @@ IF DEBUG > 0
 .notmet\@
 ENDC
 ENDM
+
+; Because there's often cases where something fits within a jr jump in normal builds,
+; but not in debug builds, the jd macro is a jp if DEBUG is set, else a jr.
+jd: MACRO
+IF DEBUG > 0
+	jp \1, \2
+ELSE
+	jr \1, \2
+ENDC
+ENDM
