@@ -1,6 +1,7 @@
 include "hram.asm"
 include "ioregs.asm"
 include "ring.asm"
+include "debug.asm"
 
 ; Joypad input is not sampled under normal circumstances to save CPU time.
 ; We set up a JoyInt to fire if any button is pressed.
@@ -42,10 +43,12 @@ JoyInit::
 	ld [JoyState], A ; Select both input lines
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; Enable joypad interrupt
+	Debug "Joy Int enabled"
 	ret
 
 
 JoyInt::
+	Debug "Joypad interrupt"
 	push AF
 	call JoyReadState
 	pop AF
@@ -78,7 +81,7 @@ JoyReadState::
 	ld B, A
 	ld A, [JoyState]
 	cp B
-	jr z, .ret ; if equal, no further action needed
+	jd z, .ret ; if equal, no further action needed
 
 	; we may need to affect interrupts:
 	; 0 -> !0: disable interrupt
@@ -90,6 +93,7 @@ JoyReadState::
 	; prev state was 0, so interrupt is enabled, we need to disable it since we'll be polling now
 	ld HL, InterruptsEnabled
 	res 4, [HL] ; disable joypad interrupt
+	Debug "Joy Int disabled"
 	jr .not_now_zero
 .not_prev_zero
 	ld A, B
@@ -106,6 +110,7 @@ JoyReadState::
 	res 4, [HL] ; clear any pending joypad interrupt
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; enable joypad interrupts
+	Debug "Joy Int enabled"
 .not_now_zero
 
 	ld A, B
