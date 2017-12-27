@@ -58,7 +58,7 @@ Start::
 .setHardwareVariant
 	ld [HardwareVariant], A
 
-	Debug "Debug messages enabled. Expression test: A = %A%"
+	Debug "Debug messages enabled. Detected hardware: %A%"
 
 	; Use core stack
 	ld SP, CoreStack
