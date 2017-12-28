@@ -102,9 +102,6 @@ Start::
 	ei ; note we've still got switching disabled until we switch into our first task
 
 	ld C, 0
-	SetTaskNewEntryPoint Task1
-	call TaskNewDynStack
-
 	SetTaskNewEntryPoint TaskPaintMain
 	call TaskNewDynStack
 
