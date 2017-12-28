@@ -32,3 +32,37 @@ Design:
 		This makes invalidating dead tasks easy, but makes management harder since waiter ids now need to be allocated,
 		and just in general makes them a special case.
 		We could partially get around this by making the ids (bank, addr) though you need to be careful about WRAM0 vs WRAMX vs SRAMX.
+	Option C: A bit of both
+		We want waking to be fast if there are few or no tasks to wake (motivating example: joypad interrupt), so needing to loop through
+		every task is a poor option. At the same time, we want a good way of un-waiting a task on death. So, we do:
+			- Waiter struct has form:
+				count, lowest task id (junk if count == 0)
+			- Task struct contains a 3 byte value (waiter bank, waiter addr)
+				Note: we might be able to pack this down. Bank is at most 4 bits (for SRAM), addr is 15 bits since first bit can't be 0 (that's ROM)
+				but since it also wont be VRAM, echo RAM, OAM, etc. it actually only has $4000 + 127 (HRAM) legal values.
+				Best to keep it simple though.
+				At the very least there needs to be a sentinel value.
+				For now, let's define it thus:
+					bank = 0 - No bank or bank 0
+					bank = $ff - No waiter
+					else - bank is bank that contains waiter, check addr for which bank (WRAM, SRAM) to set, addr contains addr
+						alternate: SRAM and WRAM banks can be encoded together with a nibble each. We should adopt this consistently. A 0 in either means N/A.
+		Then all operations are fast, simple and consistent:
+			Wait:
+				Inc count
+				Check if new task id < current saved task id (unless count was 0). If so, replace it.
+				Go to task struct for new task id, point it at this waiter.
+			Wake:
+				If count is 0, do nothing
+				Starting at saved task id, and proceeding until count tasks have been found (or end of list),
+					find tasks in task list which point at this waiter
+				Enqueue those tasks, and clear their waiter pointers
+				Set count to 0.
+			Cleanup:
+				Nothing required beyond just resetting the task struct.
+
+			Note that if cleanup occurs for a task that is the saved task id for a waiter, the task id is not guarenteed to be
+			pointing at that waiter, but IS still guarenteed to be <= all tasks that do.
+
+		Only downside is a bigger task list struct, which can be solved by a) having the task pointers list as a seperate array,
+		or b) revamping the task list so that task ids are indexes rather than offsets (eg. task after task 0 is task 1 instead of task 4 or task TASK_SIZE)
