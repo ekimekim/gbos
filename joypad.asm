@@ -41,6 +41,7 @@ JoyInit::
 	RingInit JoyQueue
 	xor A
 	ld [JoyIO], A ; Select both input lines
+	ld [JoyState], A ; Start with nothing pressed
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; Enable joypad interrupt
 	Debug "Joy Int enabled"
