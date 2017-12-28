@@ -21,7 +21,7 @@ Start::
 
 	; Disable LCD and audio.
 	; Disabling LCD must be done in VBlank.
-	; On hardware start, we have about 10-20 cycles of vblank before the first frame begins.
+	; On hardware start, we have about half a normal vblank, but this may depend on the hardware variant.
 	; So this has to be done quick!
 	; Note we save the A register to C before clearing it, as we need to save its initial value
 	; for GB hardware detection below.

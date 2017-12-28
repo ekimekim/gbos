@@ -5,7 +5,9 @@ include "ioregs.asm"
 include "hram.asm"
 
 
-; Timing info for keeping the vblank handler from running too long
+; Timing info for keeping the vblank handler from running too long.
+; One credit is roughly 11 cycles and VBlank has 1140 cycles, but there's
+; also a fixed cost overhead to worry about. This value was determined experimentally.
 VBLANK_INITIAL_CREDITS EQU 60
 ; One credit is very roughly 11 cycles. DMA + setup takes a bit over 160 cycles.
 ; 160/11 ~= 14.5, we add a little leeway
