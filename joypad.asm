@@ -40,7 +40,7 @@ SECTION "Joypad management methods", ROM0
 JoyInit::
 	RingInit JoyQueue
 	xor A
-	ld [JoyState], A ; Select both input lines
+	ld [JoyIO], A ; Select both input lines
 	ld HL, InterruptsEnabled
 	set 4, [HL] ; Enable joypad interrupt
 	Debug "Joy Int enabled"
