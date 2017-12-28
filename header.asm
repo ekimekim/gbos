@@ -61,8 +61,10 @@ TimerHandler::
 	; our purpose here is to make it as fast as possible for the far-most-common case
 	; where we only increment the least signifigant byte
 	; current cycle count, assuming no switch or joy, not counting anything /256 or smaller:
-	; (before nocarry: 15 + 10/16) + (after nocarry: 14) = just under 30 on average
-	; Since it runs ~ every 1000 cycles, this means a min overhead of ~30/1000 = ~3%
+	; (before nocarry: 17 + 11/16) + (after nocarry: 15) = ~32.7 on average
+	; Since it runs ~ every 1000 cycles, this means a min overhead of ~32.7/1000 = ~3.27%
+	; Theoretical limit for jr (from interrupt handle addr) + push one + pop one + reti = 14
+	; To do better than this (1.4%) we'd need to lower Uptime's granularity.
 	push AF
 	; Increment 4-byte number
 	ld A, [Uptime]
