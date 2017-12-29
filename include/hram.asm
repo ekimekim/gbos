@@ -12,6 +12,10 @@ SwitchTimer rb 1
 ; Currently running (or most recent) task ID. A task ID is an offset into the tasks array.
 CurrentTask rb 1
 
+; Currently loaded RAM and ROM banks.
+CurrentROMBank rb 1
+CurrentRAMBank rb 1
+
 ; Flag for whether we are allowed to do a time-sharing switch right now.
 ; Used to create critical sections without needing to disable interrupts all together.
 ; Possible values:

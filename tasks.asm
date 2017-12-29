@@ -186,12 +186,14 @@ TaskLoad::
 	ld A, [HL+]
 	and A
 	jr z, .noROM
+	ld [CurrentROMBank], A
 	SetROMBank
 	xor A
 .noROM
 	RepointStruct HL, task_rombank+1, task_rambank
 	add [HL]
 	jr z, .noRAM
+	ld [CurrentRAMBank], A
 	SetRAMBank
 .noRAM
 	; set stack pointer
@@ -260,6 +262,7 @@ T_SetROMBank::
 	LongAddToA ((TaskList+task_rombank) >> 8),((TaskList+task_rombank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rombank = &(TaskList[CurrentTask].task_rombank)
 	ld [HL], C
 	ld A, C
+	ld [CurrentROMBank], A
 	SetROMBank
 	ret
 
@@ -273,5 +276,6 @@ T_SetRAMBank::
 	LongAddToA ((TaskList+task_rambank) >> 8),((TaskList+task_rambank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rambank = &(TaskList[CurrentTask].task_rambank)
 	ld [HL], C
 	ld A, C
+	ld [CurrentRAMBank], A
 	SetRAMBank
 	ret
