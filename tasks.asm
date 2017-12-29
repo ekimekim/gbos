@@ -90,7 +90,10 @@ TaskNewWithID:
 	ld [HL+], A ; [HL] = C, this sets the initial ROM bank
 	RepointStruct HL, task_rombank+1, task_rambank
 	xor A
-	ld [HL], A ; [HL] = 0, this sets the initial RAM bank
+	ld [HL+], A ; [HL] = 0, this sets the initial RAM bank
+	RepointStruct HL, task_rambank+1, task_waiter
+	dec A ; A = ff
+	ld [HL], A ; [HL] = ff, this says the task is initially not waiting for any waiter
 	jp SchedAddTask ; schedule new task to run and return
 
 

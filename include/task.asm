@@ -1,9 +1,10 @@
 
 ; --- Task struct ---
 RSRESET
-task_sp rw 1 ; stack pointer. When this is $0000, the task slot is considered empty.
+task_sp rw 1 ; stack pointer. When this is $00xx, the task slot is considered empty (valid stack can't be in $00 page, this is ROM)
 task_rombank rb 1 ; loaded rom bank, or 0
 task_rambank rb 1 ; loaded ram bank, or 0
+task_waiter rw 1 ; waiter determinant of waiter being waited on by task, or ff
 
 TASK_SIZE rb 0
 
