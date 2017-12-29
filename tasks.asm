@@ -274,3 +274,4 @@ T_SetRAMBank::
 	ld [HL], C
 	ld A, C
 	SetRAMBank
+	ret
