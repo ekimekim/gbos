@@ -1,9 +1,14 @@
 
-file = 'waiters'
+file = None
 
 
 # Materialize macros and declare test waiter for use in testing
-extra_asm = """
+asm = """
+
+include "longcalc.asm"
+include "hram.asm"
+include "waiter.asm"
+
 SECTION "Test waiter", WRAM0[$c123]
 
 TestWaiter:
@@ -52,7 +57,7 @@ def tasks(*waiters):
 			w = w[1:]
 		bank, addr = w
 		result += task(stack, determinant(bank, addr))
-	return result
+	return Memory(result)
 
 def determinant(bank, addr):
 	if (addr & 0xd000) >> 13 == 5: # sram
@@ -65,7 +70,7 @@ def determinant(bank, addr):
 		return addr
 	raise ValueError("Bad waiter addr: {:04x}".format(addr))
 
-init, initHL = testpair('WaiterInit',
+init, initHL = testpair('TestWaiterInit',
 	out_TestWaiter = Memory(0, 255),
 )
 
@@ -76,17 +81,17 @@ def det_test(bank, addr):
 		out_HL = addr,
 		out_DE = determinant(bank, addr),
 	)
-determinantSRAM = det_test(0, 0xb123)
-determinantWRAM0 = det_test(0, 0xc001)
-determinantWRAMX = det_test(5, 0xdead)
-determinantHRAM = det_test(0, 0xffac)
+#determinantSRAM = det_test(0, 0xb123)
+#determinantWRAM0 = det_test(0, 0xc001)
+#determinantWRAMX = det_test(5, 0xdead)
+#determinantHRAM = det_test(0, 0xffac)
 
 wait_to_one = Test('WaiterWait',
 	in_HL = 'TestWaiter',
 	in_TestWaiter = Memory(0, 0xff),
-	in_CurrentTask = 6,
+	in_CurrentTask = Memory(6),
 	in_TaskList = tasks(None, None),
-	in_CurrentRAMBank = 7, # to check that we don't look at it
+	in_CurrentRAMBank = Memory(7), # to check that we don't look at it
 	out_TestWaiter = Memory(1, 6),
 	out_TaskList = tasks(None, TestWaiter),
 )
@@ -94,7 +99,7 @@ wait_to_one = Test('WaiterWait',
 wait_to_two = Test('WaiterWait',
 	in_HL = 'TestWaiter',
 	in_TestWaiter = Memory(1, 0),
-	in_CurrentTask = 6,
+	in_CurrentTask = Memory(6),
 	in_TaskList = tasks(TestWaiter, None),
 	out_TestWaiter = Memory(2, 0),
 	out_TaskList = tasks(TestWaiter, TestWaiter),
