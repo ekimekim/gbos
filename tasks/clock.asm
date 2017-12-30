@@ -78,7 +78,7 @@ TaskClockGetHMS:
 	; 100 * HL / 1024 === 25 * HL / 256 -> multiply by 25 then take top byte (H)
 	push DE
 	ld DE, 0
-	MultiplyConst16 H,L, 25, D,E ; DE = HL * 25
+	MultiplyConst16 HL, 25, DE ; DE = HL * 25
 	ld H, D
 	pop DE
 	; Now H = 100ths of a second

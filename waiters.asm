@@ -23,7 +23,8 @@ WaiterWait::
 .notlesser
 	RepointStruct HL, waiter_min_task, 0
 	call WaiterDeterminant ; DE = determinant
-	LongAdd 0,[CurrentTask], HIGH(TaskList+task_waiter),LOW(TaskList+task_waiter), H,L ; HL = &TaskList[Current Task].task_waiter
+	ld A, [CurrentTask]
+	LongAddToA TaskList+task_waiter, HL ; HL = &TaskList[Current Task].task_waiter
 	ld A, D
 	ld [HL+], A
 	ld [HL], E ; task_waiter = DE
@@ -54,7 +55,8 @@ _WaiterWake::
 	ld B, [HL] ; B = min task
 	dec A ; A = ff
 	ld [HL], A ; set min task id to ff, waiter is now cleared
-	LongAddToA HIGH(TaskList+task_sp),LOW(TaskList+task_sp), H,L ; HL = &TaskList[min task].task_sp
+	ld A, B
+	LongAddToA TaskList+task_sp, HL ; HL = &TaskList[min task].task_sp
 	; Starting at min task and proceeding until either we wake count tasks, or we hit end of task list.
 	; C contains things left to find, B contains current task id (stop when we hit MAX_TASKS * TASK_SIZE),
 	; DE is determinant to compare to and HL is our pointer.
@@ -64,7 +66,7 @@ _WaiterWake::
 	ld A, [HL+]
 	and A
 	jr nz, .valid
-	LongAdd H,L, 0,TASK_SIZE-1, H,L ; HL += TASK_SIZE - 1
+	LongAdd HL, TASK_SIZE-1, HL ; HL += TASK_SIZE - 1
 	jr .skip
 .valid
 	; Advance to task_waiter
@@ -103,7 +105,7 @@ _WaiterWake::
 WaiterDeterminant:
 	ld D, H
 	ld E, L
-	LongShiftR D,E ; DE = HL >> 1
+	LongShiftR DE ; DE = HL >> 1
 	ld A, D
 	and $f0 ; grab top 3 bits of address
 	cp %01100000 ; top 3 bits == 110 (z) means WRAM, < 110 (c) means SRAM, > (neither) means HRAM
@@ -128,7 +130,7 @@ WaiterDeterminant:
 	ld D, A ; DE = 10bb baaa aaaa aaaa
 	ret
 .sram
-	LongShiftR D,E ; DE = 00aa aaaa aaaa aaaa
+	LongShiftR DE ; DE = 00aa aaaa aaaa aaaa
 	ld A, D
 	and %00000111
 	ld D, A ; mask out top 5 bits of D, DE = 0000 0aaa aaaa aaaa

@@ -80,7 +80,7 @@ TaskNewWithID:
 
 	; fill in the task struct
 	ld A, B
-	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
+	LongAddToA TaskList+task_sp, HL ; HL = TaskList + B + task_sp = &(TaskList[B].task_sp)
 	ld A, D
 	ld [HL+], A
 	ld A, E
@@ -123,7 +123,7 @@ TaskNewDynStack::
 	; HL points to the base of the new stack, but stacks grow down,
 	; we want to give the top of the stack
 	ld A, DYN_MEM_STACK_SIZE
-	LongAddToA H,L, H,L ; HL += stack size
+	LongAddToA HL, HL ; HL += stack size
 	jr TaskNewWithID ; tail call
 
 
@@ -160,7 +160,7 @@ TaskSave::
 	ld B, H
 	ld C, L ; BC = SP
 	ld A, [CurrentTask]
-	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + CurrentTask + task_sp = &(TaskList[CurrentTask].task_sp)
+	LongAddToA TaskList+task_sp, HL ; HL = TaskList + CurrentTask + task_sp = &(TaskList[CurrentTask].task_sp)
 	; Save SP to task struct
 	ld A, B
 	ld [HL+], A
@@ -178,7 +178,7 @@ TaskSave::
 ; Takes task ID to load in A.
 TaskLoad::
 	ld [CurrentTask], A
-	LongAddToA ((TaskList+task_sp) >> 8),((TaskList+task_sp) & $ff), H,L ; HL = TaskList + A + task_sp = &(TaskList[A].task_sp)
+	LongAddToA TaskList+task_sp, HL ; HL = TaskList + A + task_sp = &(TaskList[A].task_sp)
 	; BC = [HL] = stored stack pointer
 	ld A, [HL+]
 	ld B, A
@@ -262,7 +262,7 @@ T_EnableSwitch::
 ; Clobbers A, HL
 T_SetROMBank::
 	ld A, [CurrentTask]
-	LongAddToA ((TaskList+task_rombank) >> 8),((TaskList+task_rombank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rombank = &(TaskList[CurrentTask].task_rombank)
+	LongAddToA TaskList+task_rombank, HL ; HL = TaskList + CurrentTask + task_rombank = &(TaskList[CurrentTask].task_rombank)
 	ld [HL], C
 	ld A, C
 	ld [CurrentROMBank], A
@@ -276,7 +276,7 @@ T_SetROMBank::
 ; Clobbers A, HL
 T_SetRAMBank::
 	ld A, [CurrentTask]
-	LongAddToA ((TaskList+task_rambank) >> 8),((TaskList+task_rambank) & $ff), H,L ; HL = TaskList + CurrentTask + task_rambank = &(TaskList[CurrentTask].task_rambank)
+	LongAddToA TaskList+task_rambank, HL ; HL = TaskList + CurrentTask + task_rambank = &(TaskList[CurrentTask].task_rambank)
 	ld [HL], C
 	ld A, C
 	ld [CurrentRAMBank], A

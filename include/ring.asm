@@ -44,7 +44,8 @@ RingLen: MACRO
 ; Clobbers A, H, L.
 ; Does NOT check if ring is full! Behaviour in that case is undefined.
 RingPushNoCheck: MACRO
-	LongAdd 0,[(\1) + ring_head], (((\1)+ring_data) >> 8),(((\1)+ring_data) & $ff), H,L ; HL = \1 + ring_data + (value of ring_head) = addr of ring_head'th element of ring_data
+	ld A, [(\1) + ring_head]
+	LongAddToA (\1)+ring_data, HL ; HL = \1 + ring_data + (value of ring_head) = addr of ring_head'th element of ring_data
 	ld [HL], \3
 	ld A, [(\1) + ring_head]
 	inc A
@@ -67,7 +68,7 @@ RingPush: MACRO
 	ld \4, A ; store new head for safekeeping.
 	RepointStruct HL, ring_tail, ring_head
 	ld A, [HL] ; it would be faster to update head now, but this breaks interrupt-safety
-	LongAddToA ((\1)+ring_data) >> 8,((\1)+ring_data) & $ff, H,L ; HL = \1 + ring_data + head index
+	LongAddToA (\1)+ring_data, HL ; HL = \1 + ring_data + head index
 	ld [HL], \3
 	ld HL, (\1) + ring_head
 	ld [HL], \4 ; update head
@@ -89,7 +90,8 @@ _RingPopHL: MACRO
 ; Clobbers A, H, L.
 ; Does NOT check if ring is empty! Behaviour in that case is undefined.
 RingPopNoCheck: MACRO
-	LongAdd 0,[(\1) + ring_tail], (((\1)+ring_data) >> 8),(((\1)+ring_data) & $ff), H,L ; HL = \1 + ring_data + (value of ring_tail) = addr of ring_tail'th element of ring_data
+	ld A, [(\1) + ring_tail]
+	LongAddToA (\1)+ring_data, HL ; HL = \1 + ring_data + (value of ring_tail) = addr of ring_tail'th element of ring_data
 	_RingPopHL \1, \2, \3
 	ENDM
 
@@ -104,7 +106,7 @@ RingPop: MACRO
 	jr z, .end\@ ; if no items, finish with z flag set
 	ld A, [HL+] ; A = tail
 	RepointStruct HL, ring_tail + 1, ring_data
-	LongAddToA H,L, H,L ; HL += tail index
+	LongAddToA HL, HL ; HL += tail index
 	_RingPopHL \1, \2, \3
 	or $ff ; unset z, which may be set
 .end\@

@@ -147,7 +147,7 @@ Fib:
 	ld H, D
 	ld L, E
 	pop DE
-	LongAdd D,E, H,L, D,E ; DE += HL, ie. DE = Fib(n-1) + Fib(n-2)
+	LongAdd DE, HL, DE ; DE += HL, ie. DE = Fib(n-1) + Fib(n-2)
 	inc B
 	inc B ; return B to initial value
 	call T_TaskYield ; demonstrate yielding. Fib(B) should equal DE.

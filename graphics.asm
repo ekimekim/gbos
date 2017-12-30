@@ -251,7 +251,7 @@ GraphicsTryWriteTile::
 
 	ld A, D
 	add D
-	LongAddToA TileQueueInfo >> 8,TileQueueInfo & $ff, H,L ; HL = TileQueueInfo + 2 * D
+	LongAddToA TileQueueInfo, HL ; HL = TileQueueInfo + 2 * D
 	; HL = length of D'th queue
 
 	ld A, [HL+] ; A = length of queue, HL = addr of head
@@ -312,7 +312,7 @@ T_GraphicsWriteTile::
 GraphicsWriteSprite::
 	rla
 	rla ; Shift A left twice, ie. A = 4 * A. Note the rotate is equiv to shift because A < 64.
-	LongAddToA WorkingSprites >> 8,WorkingSprites & $ff, H,L ; HL = WorkingSprites + A
+	LongAddToA WorkingSprites, HL ; HL = WorkingSprites + A
 	; In order to avoid a half-written sprite from being drawn, we ensure no draw will occur
 	; until we are done. We do this by clearing the dirty flag regardless of whether it was set.
 	; We know this won't be overwritten because we've disabled switching when calling this function.

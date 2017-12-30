@@ -81,7 +81,8 @@ DynMemAlloc::
 	ld A, B
 	inc A ; A = desired chunk length
 	ld [HL+], A ; set this chunk's length to the desired length, set HL to this chunk + 1
-	LongAdd H,L, 0,B, H,L ; HL += B, HL = chunk + 1, B = chunk length - 1, so HL + B = next chunk
+	ld A, B
+	LongAddToA HL, HL ; HL += B, HL = chunk + 1, B = chunk length - 1, so HL + B = next chunk
 	ld [HL], C ; C = excess bytes = length of new chunk
 	inc HL
 	ld A, $ff
@@ -94,7 +95,7 @@ DynMemAlloc::
 .nomatch
 	; C = chunk length - 1, HL points at chunk_owner = chunk start + 1, so HL + C = next chunk
 	ld A, C
-	LongAddToA H,L, H,L ; HL += C
+	LongAddToA HL, HL ; HL += C
 .start
 	ld A, [HL+] ; A = chunk length, HL points at chunk_owner
 	dec A ; A = chunk length - 1, set Z if A = 1 (end of range), wraps to 255 if A = 0 (ie. 256)
