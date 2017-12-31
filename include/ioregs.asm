@@ -17,9 +17,16 @@ SerialData EQU $ff01
 ; "SC" Serial control
 ; Write bits 7 and 0 to initiate a transfer. Add bit 1 to use fast cycles (CGB only).
 ; Write bit 7 and it will stay set until a transfer initiated by the other device completes.
+; Cycle speeds:
+;   Normal: 2^13Hz (128 cycles)
+;   CGB in double speed mode: 2^14Hz (64/128 normal/double speed cycles)
+;   Fast cycles: 2^18Hz (4 cycles)
+;   Fast cycles in double speed mode: 2^19Hz (2/4 normal/double speed cycles)
+; Note that even a DMG can recieve at 2^19Hz just fine.
 SerialControl EQU $ff02
 
 ; "DIV" fixed timer register. Incremented every ~610us (2^14 Hz, 64 cycles)
+; or double that in CGB double-speed mode.
 ; Write any value to set it to 0
 DivTimer EQU $ff04
 
@@ -35,6 +42,7 @@ TimerModulo EQU $ff06
 ; Bits 3-7 are unused. Bit 2 enables the timer when set, disables it when unset.
 ; Bits 0-1 are a 2-bit number where the values 0-3 mean timer frequencies
 ; 2^12 Hz (256 cycles), 2^18 Hz (4 cycles), 2^16 Hz (16 cycles) and 2^14 Hz (64 cycles) respectively.
+; All these frequencies are doubled in CGB double-speed mode.
 TimerControl EQU $ff07
 
 TimerEnable EQU 1 << 2
@@ -113,7 +121,9 @@ SoundMux EQU $ff25
 SoundControl EQU $ff26
 
 ; "LCDC" LCD control register. Defaults to $91. Write to these bits to control the display mode:
-; 0: Background and Window display off/on
+; 0: DMG: Background off/on
+;    CGB in compat mode: Background *and window* off/on
+;    CGB: 0 disables priority bits of background and window tiles, sprites are always on top
 ; 1: Sprite display off/on
 ; 2: Sprite size (width x height): 8x8 if unset, 8x16 if set
 ; 3: Background Tile grid region select: 0 for TileGrid, 1 for AltTileGrid
@@ -160,6 +170,7 @@ LCDYCompare EQU $ff45
 ; DMA transfer is initiated by writing the upper byte of the start source address to this register.
 ; eg. to start the transfer from address $1200, you would write $12.
 ; The DMA will complete 448 cycles later, best calculated as 28 loops of {dec a; jr nz}
+; Though another source reports 160 cycles?
 DMATransfer EQU $ff46
 
 ; "BGP" Background and Window palette data
@@ -178,10 +189,61 @@ SpritePalette1 EQU $ff49
 WindowY EQU $ff4a
 WindowX EQU $ff4b
 
+; CGB color palette registers
+; The CGB has two dedicated 64-byte RAM sections for color palettes that is only accessible via the
+; Background Palette Index/Data and Sprite Palette Index/Data registers respectively.
+; Note that this data can only be accessed at times when VRAM may be accessed.
+; A color value is a 16-bit little-endian value 0bbb bbgg gggr rrrr (ie. in memory gggrrrrr 0bbbbbgg).
+; A single palette is 4 color values and maps tile values 00, 01, 10 and 11 to each color respectively.
+; Each section contains 8 color palettes.
+; The index register's bottom 6 bits selects an address in the RAM section. The top bit, if set,
+; causes the index to be automatically incremented upon data write.
+; Data is written/read to the specified address via the data register.
+; The TileGrid palettes begin initialized to all white, but sprites are uninitialized.
+TileGridPaletteIndex EQU $ff68
+TileGridPaletteData EQU $ff69
+SpritePaletteIndex EQU $ff6a
+SpritePaletteData EQU $ff6b
+; Finally, note that values are not perfect RGB values - (31,31,31) is a light grey, and intensities
+; are not linear - 16-31 are all very bright, medium and dark colors are in the 0-15 range.
+; Also, colors are mixed oddly - sometimes changing one value will also influence others.
+; This completes changes on GBA emulating CGB! 0-15 are almost black.
+; One source suggests GBA-specific palettes of (CGB-value)/2 + 16.
+
 ; "KEY1" Game Boy Color speed switch.
 ; Bit 7 is unset/set when in normal/double speed respectively.
 ; Bit 0 should be set to 1, then a STOP command issued to switch modes.
 CGBSpeedSwitch EQU $ff4d
+
+; "VBK" Game Boy Color VRAM Bank select
+; Write to bit 0 of this register to pick between VRAM banks 0 and 1.
+CGBVRAMBank EQU $ff4f
+
+; CGB VRAM DMA transfer
+; Copies from CGBDMASource to CGBDMADest.
+; Source must be in ROM, SRAM or WRAM, and on a 16-byte boundary (bottom 4 bits are ignored).
+; Dest must be in VRAM (top 3 bits are ignored), and on a 16-byte boundary (bottom 4 bits are ignored).
+; The Control register's bottom 7 bits select the length in units of 16-byte blocks, - 1.
+; eg. to transfer 256 bytes would be 256/16 - 1 = 15, and we can request lengths in the range from
+; 16 to 2048 bytes.
+; The top bit of the control register selects the transfer mode, which is one of:
+; General Purpose DMA: The program is halted until the transfer is complete, and normal issues around
+;   timing of VRAM writes apply. The final value of the Control register will be $ff.
+; H-Blank DMA: One 16-byte block is transferred per H-Blank period. Execution is paused while this
+;	occurs but otherwise proceeds as normal. You may not modify the src/dest registers or switch
+;   banks being read from or written to.
+;   During the transfer, Control register will contain the value (number of blocks left - 1),
+;   or $ff when complete. The DMA may be aborted early by writing a 0 to the top bit of the control register.
+;   In this case, the bottom bits hold an undefined value but the top bit will be 1.
+;   Note this means that in all cases the top bit being 0 indicates an ongoing transfer, and 1 no transfer.
+; In both modes, transfer of one block takes 2^-17s, which is 8 cycles in normal mode or 16 in fast mode.
+; Some ROM carts may not support DMA due to not being able to handle the high speeds. There is no reliable
+; way to check for this.
+CGBDMASourceHi EQU $ff51
+CGBDMASourceLo EQU $ff52
+CGBDMADestHi EQU $ff53
+CGBDMADestLo EQU $ff54
+CGBDMAControl EQU $ff55
 
 ; "RP" Game Boy Color infrared IO.
 ; When bit 0 is set, we are sending a signal.
