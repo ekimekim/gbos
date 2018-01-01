@@ -1,0 +1,71 @@
+r = A,B,C,D,E,H,L
+n = 8-bit immediate
+nn = 16-bit immediate
+alu-op = ADD,ADC,SUB,SBC,AND,OR,XOR,CP
+b = 0-7
+Flag effects: In order z then c, for each:
+	'z', 'c', 'h', 'n': Affects in expected way
+	'0' or '1': Always sets to given value
+	'-': Not affected
+	'spec': special, see text
+
+TIME	SIZE	FLAGS	INSTRUCTION
+2	2	- -	LD r, n
+1	1	- -	LD r, r
+2	1	- -	LD r, [HL]
+2	1	- -	LD [HL], r
+3	2	- -	LD [HL], n
+2	1	- -	LD A, [(BC,DE)]
+2	1	- -	LD [(BC,DE), A]
+4	3	- -	LD A, [nn]
+4	3	- -	LD [nn], A
+2	1	- -	LD A, [HL(+,-)]
+2	1	- -	LD [HL(+,-)], A
+2	1	- -	LDH A, [$ff00+C]
+2	1	- -	LDH [$ff00+C], A
+3	2	- -	LDH A, [$ff00+n]
+3	2	- -	LDH [$ff00+n], A
+3	3	- -	LD (BC,DE,HL,SP), nn
+2	1	- -	LD SP, HL
+3	2	0 c	LD HL, SP+n ; n signed. TODO how does affect c?
+5	3	- -	LD [nn], SP
+4	1	- -	PUSH (AF,BC,DE,HL)
+3	1	spec	POP (AF,BC,DE,HL) ; POP AF changes z and c, else no flags affected
+1	1	z c	alu-op A, r ; bitwise ops unset c
+2	1	z c	alu-op A, [HL] ; bitwise ops unset c
+2	2	z c	alu-op A, n ; bitwise ops unset c
+1	1	z -	(INC,DEC) r
+3	1	z -	(INC,DEC) [HL]
+2	1	- -	(INC,DEC) (BC,DE,HL,SP) ; hw bug if high byte = $fe!
+2	1	- c	ADD HL, (BC,DE,HL,SP)
+4	2	0 c	ADD SP, n ; n signed. TODO how does affect c?
+1	1	0 c	RLCA,RLA,RRCA,RRA ; Rotate A. Note RxCA means without carry, RxA means through carry
+2	2	z c	RLC,RL,RRC,RR r ; Rotate r. Note eg. RLA faster than RL A! TODO how z affected?
+4	2	z c	RLC,RL,RRC,RR [HL] ; Rotate [HL], TODO how z affected?
+2	2	z c	SLA,SRA,SRL r ; Shift r, TODO how z affected?
+4	2	z c	SLA,SRA,SRL [HL] ; Shift [HL], TODO how z affected?
+2	2	z -	BIT b,r ; set Z flag if given bit set
+2	2	- -	SET b,r ; set given bit
+2	2	- -	RES b,r ; reset given bit
+4	2	z -	(BIT,SET,RES) b,[HL] ; z set/unaffected as per non-HL versions
+2	2	z 0	SWAP r ; z flag affected, TODO how?
+4	2	z 0	SWAP [HL] ; z flag affected, TODO how?
+1	1	z c	DAA ; for BCD ops
+1	1	- -	CPL ; A = bitwise NOT A. No flags changed.
+1	1	- c	CCF ; flip carry flag
+1	1	- 1	SCF ; set carry flag
+1	1	- -	NOP
+"1"	1	- -	HALT
+"1"	2	- -	STOP ; halt and disable screen until (button press? interrupt?), lower power than simple halt
+1	1	- -	DI,EI
+1	1	- -	JP [HL]
+4	3	- -	JP nn
+3/4	3	- -	JP (z,nz,c,nc), nn
+3	2	- -	JR n ; n signed
+2/3	2	- -	JR (z,nz,c,nc), n ; n signed
+6	3	- -	CALL nn
+3/6	3	- -	CALL (n,nz,c,nc), nn
+4	1	- -	RET
+2/5	1	- -	RET (n,nz,c,nc)
+4	1	- -	RETI
+4	1	- -	RST ($00,$08,$10,$18,$20,$28,$30,$38)
