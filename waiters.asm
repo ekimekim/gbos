@@ -28,6 +28,10 @@ WaiterWait::
 	ld A, D
 	ld [HL+], A
 	ld [HL], E ; task_waiter = DE
+	; In unit tests, we don't want to pass control to the scheduler. Instead, just return.
+IF DEF(_IS_UNIT_TEST)
+	ret
+ENDC
 	call TaskSave
 	jp SchedLoadNext ; does not return
 

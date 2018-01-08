@@ -1,5 +1,5 @@
 
-file = None
+file = 'waiters'
 
 
 # Materialize macros and declare test waiter for use in testing
@@ -60,14 +60,14 @@ def tasks(*waiters):
 	return Memory(result)
 
 def determinant(bank, addr):
-	if (addr & 0xd000) >> 13 == 5: # sram
-		return ((addr & 0x1fff) >> 2) | (bank << 11)
-	if (addr & 0xd000) >> 13 == 6: # wram
-		return ((addr & 0x0fff >> 1) | (bank << 11) | (1 << 15))
-	if (addr & 0xff00) >> 8 == 0xff: # hram
-		return (0xc00 << 8) | (addr & 0xff)
 	if addr == 0xffff: # sentinel
 		return addr
+	if (addr & 0xe000) >> 13 == 5: # sram
+		return ((addr & 0x1fff) >> 2) | (bank << 11)
+	if (addr & 0xe000) >> 13 == 6: # wram
+		return ((addr & 0x0fff >> 1) | (bank << 11) | (1 << 15))
+	if (addr & 0xff00) >> 8 == 0xff: # hram
+		return 0xc000 | (addr & 0xff)
 	raise ValueError("Bad waiter addr: {:04x}".format(addr))
 
 init, initHL = testpair('TestWaiterInit',
@@ -81,10 +81,10 @@ def det_test(bank, addr):
 		out_HL = addr,
 		out_DE = determinant(bank, addr),
 	)
-#determinantSRAM = det_test(0, 0xb123)
-#determinantWRAM0 = det_test(0, 0xc001)
-#determinantWRAMX = det_test(5, 0xdead)
-#determinantHRAM = det_test(0, 0xffac)
+determinantSRAM = det_test(0, 0xb123)
+determinantWRAM0 = det_test(0, 0xc001)
+determinantWRAMX = det_test(5, 0xdead)
+determinantHRAM = det_test(0, 0xffac)
 
 wait_to_one = Test('WaiterWait',
 	in_HL = 'TestWaiter',

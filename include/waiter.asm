@@ -1,6 +1,7 @@
 IF !DEF(_G_WAITER)
 _G_WAITER EQU "true"
 
+include "longcalc.asm"
 
 ; Waiters provide a primitive for putting tasks to sleep until some other task wishes to wake them.
 ; Use these methods (apart from the Declare methods) by giving the first arg as the waiter's label.
