@@ -22,7 +22,8 @@ WaiterWait::
 	ld [HL], A
 .notlesser
 	RepointStruct HL, waiter_min_task, 0
-	call WaiterDeterminant ; DE = determinant
+	ld D, H
+	ld E, L ; DE = HL = waiter address
 	ld A, [CurrentTask]
 	LongAddToA TaskList+task_waiter, HL ; HL = &TaskList[Current Task].task_waiter
 	ld A, D
@@ -51,7 +52,8 @@ _WaiterWake::
 	jr z, .finish
 	ld C, A ; C = count of things to wake
 	RepointStruct HL, waiter_count, 0
-	call WaiterDeterminant ; DE = determinant
+	ld D, H
+	ld E, L ; DE = HL = waiter address
 	RepointStruct HL, 0, waiter_count
 	xor A
 	ld [HL+], A ; set count to 0
@@ -63,8 +65,9 @@ _WaiterWake::
 	LongAddToA TaskList+task_sp, HL ; HL = &TaskList[min task].task_sp
 	; Starting at min task and proceeding until either we wake count tasks, or we hit end of task list.
 	; C contains things left to find, B contains current task id (stop when we hit MAX_TASKS * TASK_SIZE),
-	; DE is determinant to compare to and HL is our pointer.
+	; DE is addr to compare to and HL is our pointer.
 .loop
+
 	; A task doesn't clear its waiter field on death, so we need to check its task_sp is non-zero
 	; so we know it's a valid entry.
 	ld A, [HL+]
@@ -73,16 +76,43 @@ _WaiterWake::
 	LongAdd HL, TASK_SIZE-1, HL ; HL += TASK_SIZE - 1
 	jr .skip
 .valid
+
+	; Advance to task bank fields
+	RepointStruct HL, task_sp + 1, task_rambank
+	; Check ram bank, if needed.
+	; This seems kinda wasteful to determine every time but we're out of regs.
+	; We determine this from top 4 bits:
+	;  101x - SRAM bank (currently ignored since we assume no sram switching right now)
+	;  1100 - WRAM0 (no bank to check)
+	;  1101 - WRAMX (check ram bank)
+	;  1111 - HRAM (no bank to check)
+	ld A, D
+	rla
+	rla ; this puts 2nd from top bit into carry. 0 -> SRAM, 1 -> WRAM or HRAM
+	jr c, .sram
+	and %11000000 ; select top 2 bits. 00 -> WRAM0, 01 -> WRAMX, 11 -> HRAM
+	cp %01000000 ; set z if WRAMX
+	jr nz, .bank_is_good
+.wramx
+	ld A, [CurrentRAMBank]
+	cp [HL] ; compare to task_rambank, set z if match
+	jr z, .bank_is_good
+	RepointStruct HL, task_rambank, TASK_SIZE + task_sp ; Point to next task and continue
+	jr .skip
+.sram
+	; TODO SRAM checking goes here once we track that, for now assume good
+.bank_is_good
+
 	; Advance to task_waiter
-	RepointStruct HL, task_sp, task_waiter
-	; Check it against determinant
+	RepointStruct HL, task_rambank, task_waiter
+	; Check it against address
 	ld A, [HL+]
-	cp D ; set z if upper half of determinant matches
+	cp D ; set z if upper half of address matches
 	ld A, [HL+]
 	jr nz, .next ; skip forward if D didn't match
 	cp E ; set z if lower half matches
 	jr nz, .next ; skip forward if E didn't match
-	; Determinant matches: Wake this task and decrement count, check for count == 0 exit
+	; Address matches: Wake this task and decrement count, check for count == 0 exit
 	push HL ; save pointer to task_waiter+2
 	RepointStruct HL, task_waiter + 2, task_waiter ; HL = task_waiter
 	ld [HL], $ff ; set task as having no waiter
@@ -101,47 +131,3 @@ _WaiterWake::
 	jr c, .loop
 .finish
 	jp T_EnableSwitch ; tail call
-
-
-; Calculate determinant of waiter in HL, put result in DE.
-; See include/waiter.asm for description of calculating determinant.
-; Clobbers A.
-WaiterDeterminant:
-	ld D, H
-	ld E, L
-	LongShiftR DE ; DE = HL >> 1
-	ld A, D
-	and $f0 ; grab top 3 bits of address
-	cp %01100000 ; top 3 bits == 110 (z) means WRAM, < 110 (c) means SRAM, > (neither) means HRAM
-	jr z, .sram
-	jr c, .wram
-.hram
-	ld D, %11000000 ; DE = 1100 0000 aaaa aaaa
-	ret
-.wram
-	ld A, D
-	and %00000111
-	ld D, A ; mask out top 5 bits of D, DE = 0000 0aaa aaaa aaaa
-	ld A, [CurrentRAMBank] ; A = 0000 0bbb since ram bank is 0-7
-	bit 4, H ; set z if 4th bit of HL set, ie. if in WRAMX, not WRAM0
-	jr z, .wramx
-	xor A ; force bank = 0 for WRAM0 addrs
-.wramx
-	swap A ; A = 0bbb 0000
-	inc A ; A = 0bbb 0001
-	rrca ; A = 10bb b000
-	or D
-	ld D, A ; DE = 10bb baaa aaaa aaaa
-	ret
-.sram
-	LongShiftR DE ; DE = 00aa aaaa aaaa aaaa
-	ld A, D
-	and %00000111
-	ld D, A ; mask out top 5 bits of D, DE = 0000 0aaa aaaa aaaa
-	; TODO need to get SRAM bank here, currently never saved or set so assume 0
-	xor A ; A = sram bank = 0000 bbbb since sram bank is 0-15
-	swap A ; A = bbbb 0000
-	rrca ; A = 0bbb b000
-	or D
-	ld D, A ; DE = 0bbb baaa aaaa aaaa
-	ret
