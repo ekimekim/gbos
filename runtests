@@ -36,6 +36,10 @@ fi
 
 code=0
 for rom in "${roms[@]}"; do
-	runtest "$rom" || code=1
+	if ! runtest "$rom"; then
+		echo "$rom failed!"
+		code=1
+	fi
+	echo
 done
 exit "$code"
