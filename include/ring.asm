@@ -1,3 +1,6 @@
+IF !DEF(_G_RING)
+_G_RING EQU "true"
+
 include "longcalc.asm"
 
 ; A ring is a fixed-size array that forms a queue.
@@ -111,3 +114,5 @@ RingPop: MACRO
 	or $ff ; unset z, which may be set
 .end\@
 	ENDM
+
+ENDC

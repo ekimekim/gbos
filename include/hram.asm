@@ -1,3 +1,6 @@
+IF !DEF(_G_HRAM)
+_G_HRAM EQU "true"
+
 RSSET $ff80
 
 ; Machine uptime. Used for various timekeeping purposes.
@@ -68,3 +71,5 @@ EnableSwitch: MACRO
 	xor A
 	ld [Switchable], A
 	ENDM
+
+ENDC

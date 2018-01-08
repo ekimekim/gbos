@@ -1,3 +1,6 @@
+IF !DEF(_G_TASK)
+_G_TASK EQU "true"
+
 
 ; --- Task struct ---
 RSRESET
@@ -16,4 +19,6 @@ MAX_TASKS EQU 31
 
 IF MAX_TASKS * TASK_SIZE >= 256
 FAIL "Since CurrentTask is only 1 byte, TaskList must fit within 256 bytes"
+ENDC
+
 ENDC

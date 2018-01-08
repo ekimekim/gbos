@@ -1,3 +1,6 @@
+IF !DEF(_G_LONGCALC)
+_G_LONGCALC EQU "true"
+
 
 ; Macro file containing macros for calculations involving long (16-bit) numbers
 
@@ -119,3 +122,5 @@ _N SET _N >> 1
 	ENDC
 	ENDR
 	ENDM
+
+ENDC

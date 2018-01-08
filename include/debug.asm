@@ -1,5 +1,5 @@
-
-
+IF !DEF(_G_DEBUG)
+_G_DEBUG EQU "true"
 
 ; Debug macro works in certain emulators to print a debug message \1.
 ; Currently supported: bgb only.
@@ -54,3 +54,5 @@ ELSE
 	jr \1, \2
 ENDC
 ENDM
+
+ENDC

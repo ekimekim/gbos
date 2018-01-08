@@ -1,3 +1,6 @@
+IF !DEF(_G_VRAM)
+_G_VRAM EQU "true"
+
 
 ; Tile map is a array 0 to 255 of 16-byte tile images from $8000-$8fff
 ; Alt tile map is a array -128 to 127 from $8800-$97ff (0 is at $9000)
@@ -41,3 +44,5 @@ AltTileGrid EQU $9c00
 ; with ties split by lowest sprite table index. In CGB mode, lower-index sprites are always on top.
 ; This priority ordering also applies to the 10 sprites/row limit.
 SpriteTable EQU $fe00
+
+ENDC

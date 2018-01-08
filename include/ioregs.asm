@@ -1,3 +1,6 @@
+IF !DEF(_G_IOREGS)
+_G_IOREGS EQU "true"
+
 
 ; "P1" Joypad input/output. Bits 6 and 7 are unused (count low to high, so bit 7 is 128)
 ; Bits 4 and 5 are written to to "select" one of two lines.
@@ -260,3 +263,5 @@ IntEnableLCDC EQU 1 << 1
 IntEnableTimer EQU 1 << 2
 IntEnableSerial EQU 1 << 3
 IntEnableJoypad EQU 1 << 4
+
+ENDC

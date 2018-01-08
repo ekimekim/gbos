@@ -1,3 +1,6 @@
+IF !DEF(_G_MACROS)
+_G_MACROS EQU "true"
+
 
 ; Copy BC bytes (non-zero) from [HL] to [DE]. Clobbers A.
 LongCopy: MACRO
@@ -74,3 +77,5 @@ SetTaskNewEntryPoint: MACRO
 	ld DE, (\1)
 	ld C, BANK(\1)
 	ENDM
+
+ENDC
