@@ -8,10 +8,19 @@ Debug EQUS "_Debug \{__LINE__\}, "
 ; _Debug takes __LINE__ as first arg as a workaround. Use Debug instead.
 _Debug: MACRO
 IF DEBUG > 0
+
+	; We define the message off in some other ROM bank so that the size difference between
+	; debug builds and release builds for the same section of code is small.
+PUSHS
+SECTION "Debug string {__FILE__} \1 \@", ROMX
+DebugString\@:
+	db strcat(__FILE__, strcat(":\1@%TOTALCLKS%: ", \2))
+	db 0 ; null terminator
+POPS
+
 	ld d, d
 	jr .end\@
-	dw $6464, $0000
-	db strcat(__FILE__, strcat(":\1@%TOTALCLKS%: ", \2))
+	dw $6464, $0001, DebugString\@, BANK(DebugString\@)
 .end\@
 ENDC
 ENDM
