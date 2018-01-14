@@ -254,6 +254,10 @@ CGBDMAControl EQU $ff55
 ; Bit 1 will be unset when a signal is detected, and set otherwise.
 CGBInfrared EQU $ff56
 
+; "SVBK" Game Boy Color WRAM Bank select
+; Write to bits 0-2 of this register to pick WRAMX banks 1-7 (writing 0 also picks bank 1)
+CGBWRAMBank EQU $ff70
+
 ; "IE" Interrupt Enable flags. Write to this register to selectively disable interrupts.
 ; Bits 0-4 control off/on for respectively: VBlank, LCDC, Timer, Serial, Joypad
 InterruptsEnabled EQU $ffff
