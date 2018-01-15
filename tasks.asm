@@ -76,7 +76,7 @@ TaskNewWithID:
 	ld A, D
 	ld [HL-], A
 	ld [HL], E ; push DE to stack at HL - this becomes the initial PC
-	LongSub H,L, 0,10, D,E ; push 10 bytes of garbage to the stack and save in DE - this becomes junk + initial regs
+	LongSub HL, 10, DE ; push 10 bytes of garbage to the stack and save in DE - this becomes junk + initial regs
 
 	; fill in the task struct
 	ld A, B

@@ -135,7 +135,7 @@ SchedEnqueueSleepTask::
 .not_empty
 	; BC = NextWakeTime - HLDE and set carry depending on if we borrow
 	; (we do it in this order since it doesn't really matter and the load instructions work out easier)
-	LongSub [NextWakeTime+1],[NextWakeTime], D,E, B,C ; BC = bottom word of NextWakeTime - DE, and set carry
+	LongSubParts [NextWakeTime+1],[NextWakeTime], D,E, B,C ; BC = bottom word of NextWakeTime - DE, and set carry
 	; for the rest of the calculation, we don't care about result (it'll be either 0 or -1)
 	; we just need to know the final carry state
 	ld A, [NextWakeTime+2]

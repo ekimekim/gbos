@@ -71,7 +71,7 @@ RepointStruct: MACRO
 
 ; Subtract 16-bit reg pairs or immediates \1\2 and \3\4, putting result in \5\6, which may be the same as either.
 ; Cannot use AF. Clobbers A. Sets or resets carry as per normal subtract.
-LongSub: MACRO
+LongSubParts: MACRO
 	ld A, \2
 	sub \4
 	ld \6, A
@@ -79,6 +79,21 @@ LongSub: MACRO
 	sbc \3
 	ld \5, A
 	ENDM
+LongSub: MACRO
+	LongSubParts HIGH(\1),LOW(\1), HIGH(\2),LOW(\2), HIGH(\3),LOW(\3)
+	ENDM
+
+; Compare 16-bit reg pairs or immediates \1\2 and \3\4, setting zero and carry as per normal cp.
+; Clobbers A.
+LongCPParts: MACRO
+	ld A, \2
+	sub \4
+	ld A, \1
+	sbc \3
+	ENDM
+LongCP: MACRO
+	LongCPParts HIGH(\1),LOW(\1), HIGH(\2),LOW(\2)
+ENDM
 
 ; Shift 16-bit reg pair \1\2 (not AF) left once. Sets carry as per normal shift.
 ; This corresponds to doubling the (unsigned) value.
