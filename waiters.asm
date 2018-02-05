@@ -197,8 +197,10 @@ _WaiterWake::
 	; Address matches: Wake this task and decrement count, check for count == 0 exit
 	push HL ; save pointer to task_waiter+2
 	RepointStruct HL, task_waiter + 2, task_waiter ; HL = task_waiter
-	ld [HL], $ff ; set task as having no waiter
-	call SchedAddTask ; schedule task
+	ld A, $ff
+	ld [HL+], A
+	ld [HL+], A ; task_waiter = ffff (no waiter), HL = task_waiter + 2
+	call SchedAddTask ; schedule task. clobbers A, HL
 	pop HL ; restore HL = task_waiter + 2
 	dec C ; decrement count, set z if count == 0
 	jr z, .finish ; if count == 0, break
