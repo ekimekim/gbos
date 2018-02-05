@@ -13,6 +13,94 @@ SECTION "Waiter methods", ROM0
 ; Clobbers A, D, E, H, L
 WaiterWait::
 	call T_DisableSwitch
+	call _WaiterWait
+	; In unit tests, we don't want to pass control to the scheduler. Instead, just return.
+IF DEF(_IS_UNIT_TEST)
+	ret
+ENDC
+	call TaskSave
+	jp SchedLoadNext ; does not return
+
+
+; Wait on int-safe waiter in HL, putting this task to sleep until it is woken.
+; Consider carefully what may happen in between any other logic and calling this function,
+; you may want to use IntSafeWaiterCheckOrWait instead.
+; Clobbers A, D, E, H, L
+IntSafeWaiterWait::
+	call T_DisableSwitch
+	; fall through
+	RepointStruct HL, 0, isw_flag ; point to flag of waiter in HL
+	push HL ; for later
+	ld A, 1
+	ld [HL+], A ; set flag to 1, telling any interrupts that a wait is in-progress
+	RepointStruct HL, isw_flag + 1, isw_waiter ; HL points at inner waiter
+	call _WaiterWait ; set up task to wait
+	pop HL ; HL = isw_flag
+; Common parts of IntSafeWaiterWait and _IntSafeWaiterCheckOrWait
+_IntSafeWaiterWaitFinish:
+	; We have to be careful here. An interrupt might see the flag=1 and set it to 2 in between
+	; us saving the flag result and resetting it to 0. We disable interrupts to do an atomic CAS.
+	xor A
+	di
+	ld D, [HL]
+	ld [HL], A
+	ei
+	; We are now in a very dangerous situation. Our current task is both currently running
+	; and potentially scheduled to run. We must call TaskSave before allowing the scheduler to run,
+	; or else it may use stale saved values and re-load the task from earlier state.
+	dec D ; set z if flag == 1
+	jr z, .noconflict
+	; flag == 2, so a confict occurred. we wake all waiters, including the task we just suspended.
+	push BC
+	call _WaiterWake
+	pop BC
+.noconflict
+	call TaskSave
+	jp SchedLoadNext ; does not return
+
+
+; This is called from IntSafeWatierCheckOrWait. If the carry flag is unset,
+; it waits on the waiter in HL. In either case, it safely clears the isw flag.
+; Clobbers HL
+_IntSafeWaiterCheckOrWait::
+	push DE
+	jr c, .nowait
+	RepointStruct HL, 0, isw_flag
+	push HL ; preserve HL over _WaiterWait
+	RepointStruct HL, isw_flag, isw_waiter ; point HL at inner waiter
+	call _WaiterWait ; set up task to wait
+	pop HL
+	call _IntSafeWaiterWaitFinish ; the rest of this function proceeds as per IntSafeWaiterWait
+	; We only reach here once the task is woken again and has been switched back to
+	pop DE
+	ret
+.nowait
+	; We have to be careful here. An interrupt might see the flag=1 and set it to 2 in between
+	; us saving the flag result and resetting it to 0. We disable interrupts to do an atomic CAS.
+	ld E, 0
+	di
+	ld D, [HL]
+	ld [HL], E
+	ei
+	dec D ; set z if flag == 1
+	jr z, .noconflict
+	; An interrupt didn't fire a wake because we told it we were mid-adding a waiter.
+	; We now need to call the wake for it.
+	push AF
+	push BC
+	call _WaiterWake
+	pop BC
+	pop AF
+.noconflict
+	pop DE
+	jp T_EnableSwitch ; unlike other cases where we don't return without switching,
+	                  ; here we have to re-enable switch. This is a tail call.
+
+
+; Implements common parts of WaiterWait and IntSafeWaiterWait
+; Waiter addr should be in HL. Returns once task has been added to waiter.
+; Clobbers A, D, E, H, L
+_WaiterWait::
 	RepointStruct HL, 0, waiter_count
 	inc [HL]
 	RepointStruct HL, waiter_count, waiter_min_task
@@ -29,12 +117,7 @@ WaiterWait::
 	ld A, D
 	ld [HL+], A
 	ld [HL], E ; task_waiter = DE
-	; In unit tests, we don't want to pass control to the scheduler. Instead, just return.
-IF DEF(_IS_UNIT_TEST)
 	ret
-ENDC
-	call TaskSave
-	jp SchedLoadNext ; does not return
 
 
 ; This function is for internal use by the WaiterWake and WaiterWakeHL macros,
@@ -45,7 +128,6 @@ ENDC
 ; HL points to waiter.
 ; Clobbers all.
 _WaiterWake::
-	call T_DisableSwitch
 	RepointStruct HL, 0, waiter_count
 	ld A, [HL]
 	and A ; set z if A == 0
@@ -130,4 +212,4 @@ _WaiterWake::
 	cp MAX_TASKS * TASK_SIZE ; set c if B is still within task list
 	jr c, .loop
 .finish
-	jp T_EnableSwitch ; tail call
+	ret

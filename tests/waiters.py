@@ -14,6 +14,11 @@ SECTION "Test waiter", WRAM0[$c123]
 TestWaiter:
 	DeclareWaiter
 
+SECTION "Test ISW", WRAM0[$c223]
+
+TestISW:
+	DeclareIntSafeWaiter
+
 SECTION "Test waiter materialized macros", ROM0
 
 TestWaiterInit:
@@ -25,6 +30,10 @@ TestWaiterInitHL:
 	WaiterInitHL
 	ret
 
+TestIntSafeWaiterInit:
+	IntSafeWaiterInit TestISW
+	ret
+
 TestWaiterWake:
 	WaiterWake TestWaiter
 	ret
@@ -33,9 +42,27 @@ TestWaiterWakeHL:
 	ld HL, TestWaiter
 	WaiterWakeHL
 	ret
+
+TestWRAMXWaiterWake:
+	WaiterWake TestWRAMXWaiter
+	ret
+
+TestIntSafeWaiterWake:
+	IntSafeWaiterWake TestISW
+	ret
+
+TestIntSafeWaiterCheckOrWait:
+	IntSafeWaiterCheckOrWait TestISW, TestISW_Checker
+	ret
+
+TestISW_Checker:
+	; Set c if A < B
+	cp B
+	ret
 """
 
 TestWaiter = 0xc123
+TestISW = 0xc223
 
 def testpair(target, **kwargs):
 	return Test(target, **kwargs), Test(target + "HL", **kwargs)
@@ -63,6 +90,10 @@ init, initHL = testpair('TestWaiterInit',
 	out_TestWaiter = Memory(0, 255),
 )
 
+initISW = Test('TestIntSafeWaiterInit',
+	out_TestISW = Memory(0, 0, 255),
+)
+
 wait_to_one = Test('WaiterWait',
 	in_HL = 'TestWaiter',
 	in_TestWaiter = Memory(0, 0xff),
@@ -85,3 +116,4 @@ wait_to_two = Test('WaiterWait',
 
 # TODO test WaiterWake and WaiterWakeHL for zero and non-zero cases
 # TODO test WaiterWake for hard non-zero cases
+# TODO test ISW wait and wake cases
