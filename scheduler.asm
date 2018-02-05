@@ -11,7 +11,7 @@ SECTION "Scheduler RAM", WRAM0
 ; RunList is a ring.
 ; We assume it can never fill since tasks shouldn't be able to be in there twice.
 RUN_LIST_SIZE EQU MAX_TASKS
-RunList:
+RunList::
 	RingDeclare RUN_LIST_SIZE
 
 ; NextWakeTime is a 4-byte little-endian integer containing Uptime value at which time the next
