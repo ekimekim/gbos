@@ -30,7 +30,7 @@ SerialControl EQU $ff02
 
 ; "DIV" fixed timer register. Incremented every ~610us (2^14 Hz, 64 cycles)
 ; or double that in CGB double-speed mode.
-; Write any value to set it to 0
+; Write any value to set it to 0 (and do weird things to the timer counter)
 DivTimer EQU $ff04
 
 ; "TIMA" Timer counter register. Incremented at a variable frequency (see TAC)
