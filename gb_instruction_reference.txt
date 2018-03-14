@@ -27,7 +27,7 @@ TIME	SIZE	FLAGS	INSTRUCTION
 3	2	- -	LDH [$ff00+n], A
 3	3	- -	LD (BC,DE,HL,SP), nn
 2	1	- -	LD SP, HL
-3	2	0 c	LD HL, SP+n ; n signed. TODO how does affect c?
+3	2	0 c	LD HL, SP+n ; HL = SP + *signed* n. c is set as per LOW(SP) + *unsigned* n.
 5	3	- -	LD [nn], SP
 4	1	- -	PUSH (AF,BC,DE,HL)
 3	1	spec	POP (AF,BC,DE,HL) ; POP AF changes z and c, else no flags affected
@@ -38,7 +38,7 @@ TIME	SIZE	FLAGS	INSTRUCTION
 3	1	z -	(INC,DEC) [HL]
 2	1	- -	(INC,DEC) (BC,DE,HL,SP) ; hw bug if high byte = $fe!
 2	1	- c	ADD HL, (BC,DE,HL,SP)
-4	2	0 c	ADD SP, n ; n signed. TODO how does affect c?
+4	2	0 c	ADD SP, n ; SP = SP + *signed* n. c is set as per LOW(SP) + *unsigned* n.
 1	1	0 c	RLCA,RLA,RRCA,RRA ; Rotate A. Note RxCA means without carry, RxA means through carry
 2	2	z c	RLC,RL,RRC,RR r ; Rotate r. Note eg. RLA faster than RL A! TODO how z affected?
 4	2	z c	RLC,RL,RRC,RR [HL] ; Rotate [HL], TODO how z affected?
