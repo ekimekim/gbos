@@ -1,0 +1,5 @@
+WRAM banks go from 0 to 7.
+SRAM banks may go from 0 to 15.
+We can fit both of these in a byte, and it makes it nicer for moving
+these values around. So let's do that:
+	0www ssss
