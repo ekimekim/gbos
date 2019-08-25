@@ -94,7 +94,9 @@ SoundCh3Length EQU $ff1b
 ; Channel 3 volume control. Selects 100%, 50% or 25% volume or mute with bits 5-6.
 SoundCh3Volume EQU $ff1c
 ; Channel 3 Frequency and general control. 11 bits of freq.
-; The top 5 bits of the high byte are reused as control.
+; The top bits of the high byte are reused as control:
+;  7: init. write 1 to begin playing
+;  6: when set, SoundCh3Length is used to determine when to stop. otherwise play forever.
 SoundCh3FreqLo EQU $ff1d
 SoundCh3Control EQU $ff1e
 ; Channel 3 custom wave data. 32 4-bit samples, upper nibble first. Runs from $ff30-$ff3f.
